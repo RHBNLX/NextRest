@@ -5,6 +5,7 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  ActivityIndicator,
 } from "react-native";
 
 import CustomFooter from "../components/footer";
@@ -14,32 +15,62 @@ export default function Index() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const API_URL = "http://127.0.0.1:8000/api"; //placeholder for testing
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     if (!username || !password) {
       setError("Please enter both username and password.");
       return;
     }
 
-    setError("");
-    // TODO: Submit login
-    console.log({ username, password });
+    try {
+      setLoading(true);
+      setError("");
+
+      const res = await fetch(`${API_URL}/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: username,
+          password: password,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.message || "Login failed.");
+        return;
+      }
+      console.log("Logged in:", data);
+
+      // TODO:
+      // - Save token (AsyncStorage)
+      // - Navigate to dashboard
+
+    } catch (err) {
+      console.error(err);
+      setError("Network error. Check your connection.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <View style={styles.container}>
       <CustomNavbar title="Login" />
 
-      {/* Background Icon */}
-
       <View style={styles.formContainer}>
         <View style={styles.form}>
           <Text style={styles.heading}>Hello again!</Text>
 
           <TextInput
-            placeholder="Username"
+            placeholder="Email"
             placeholderTextColor="#666"
-            autoComplete="username"
+            autoComplete="email"
             style={styles.input}
             value={username}
             onChangeText={setUsername}
@@ -61,11 +92,17 @@ export default function Index() {
             activeOpacity={0.7}
             style={styles.loginButton}
             onPress={handleLogin}
+            disabled={loading}
           >
-            <Text style={styles.loginButtonText}>Login</Text>
+            {loading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.loginButtonText}>Login</Text>
+            )}
           </TouchableOpacity>
         </View>
       </View>
+
       <CustomFooter />
     </View>
   );
@@ -115,19 +152,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginTop: 10,
-
-    shadowColor: "#007Aff",
-    shadowOpacity: 0.35,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 6,
   },
 
   loginButtonText: {
     color: "#fff",
     fontSize: 17,
     fontWeight: "600",
-    letterSpacing: 0.3,
   },
 
   errorText: {

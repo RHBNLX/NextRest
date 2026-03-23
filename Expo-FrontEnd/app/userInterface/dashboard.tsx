@@ -12,70 +12,65 @@ import {
 import CustomFooter from "../components/footer";
 import CustomNavbar from "../components/navbar";
 
-type Parcel = {
+type Order = {
     id: number;
-    recipient: string;
-    address: string;
+    pickup_address: string;
+    dropoff_address: string;
     status: string;
-    phone: string;
-    email: string;
-    size: string;
+    user_id: number;
+    courier_id: number;
 };
 
 export default function Dashboard() {
     const { width } = useWindowDimensions();
     const isMobile = width < 768;
 
-
     const [expandedParcelId, setExpandedParcelId] = useState<number | null>(null);
+    const [incomingOrders, setIncomingOrders] = useState<Order[]>([]);
+    const [outgoingOrders, setOutgoingOrders] = useState<Order[]>([]);
+    const [loading, setLoading] = useState(true);
 
     const toggleParcel = (id: number) => {
         setExpandedParcelId(expandedParcelId === id ? null : id);
     };
-    const [pendingParcels, setPendingParcels] = useState<Parcel[]>([]);
-    const [outgoingParcels, setOutgoingParcels] = useState<Parcel[]>([]);
-    const [loading, setLoading] = useState(true);
 
-    //mock
-    const fetchParcels = async () => {
-        setLoading(true);
-        setTimeout(() => {
-            setPendingParcels([
-                {
-                    id: 1,
-                    recipient: "Alice",
-                    address: "123 Main St",
-                    status: "Incoming",
-                    phone: "+123456789",
-                    email: "alice@example.com",
-                    size: "Medium",
-                },
-                {
-                    id: 2,
-                    recipient: "Bob",
-                    address: "45 Oak Ave",
-                    status: "Incoming",
-                    phone: "+123456789",
-                    email: "bob@example.com",
-                    size: "Large",
-                },
-            ]);
+    // ⚠️ CHANGE THIS if using real device
+    const API_URL = "http://127.0.0.1:8000/api";
+
+    const fetchOrders = async () => {
+        try {
+            setLoading(true);
+
+            const res = await fetch(`${API_URL}/orders`);
+            const data = await res.json();
+
+            // Basic separation (adjust later with auth logic)
+            const incoming = data.filter((o: Order) => o.status === "Incoming");
+            const outgoing = data.filter((o: Order) => o.status === "Outgoing");
+
+            setIncomingOrders(incoming);
+            setOutgoingOrders(outgoing);
+        } catch (err) {
+            console.error("Error fetching orders:", err);
+        } finally {
             setLoading(false);
-        }, 1000);
+        }
     };
 
     useEffect(() => {
-        fetchParcels();
+        fetchOrders();
     }, []);
 
     return (
         <View style={styles.container}>
             <CustomNavbar title="Dashboard" />
+
             <View style={styles.iconBackground}>
                 <AntDesign name="dashboard" size={300} color="#000" />
             </View>
 
             <View style={[styles.mainRow, { flexDirection: isMobile ? "column" : "row" }]}>
+                {/* Sidebar */}
                 <View style={[styles.sidebar, { width: isMobile ? "100%" : 250 }]}>
                     <View style={styles.sidebarSection}>
                         <Text style={styles.sidebarTitle}>Sending a Parcel</Text>
@@ -97,39 +92,50 @@ export default function Dashboard() {
                         </TouchableOpacity>
                     </View>
                 </View>
+
+                {/* Content */}
                 <View style={styles.contentArea}>
                     <Text style={styles.mainContentTitle}>Your Parcels</Text>
 
                     <View style={[styles.parcelsRow, { flexDirection: isMobile ? "column" : "row" }]}>
+                        {/* Incoming */}
                         <View style={styles.parcelsColumn}>
                             <Text style={styles.parcelsTitle}>Incoming Parcels</Text>
+
                             <ScrollView style={styles.parcelScroll}>
                                 {loading ? (
                                     <ActivityIndicator size="small" color="#007AFF" />
-                                ) : Array.isArray(pendingParcels) && pendingParcels.length > 0 ? (
-                                    pendingParcels.map((p) => (
-                                        <View key={p.id} style={styles.parcelCard}>
+                                ) : incomingOrders.length > 0 ? (
+                                    incomingOrders.map((o) => (
+                                        <View key={o.id} style={styles.parcelCard}>
                                             <View style={styles.parcelHeader}>
                                                 <View>
-                                                    <Text style={styles.parcelRecipient}>{p.recipient}</Text>
-                                                    <Text style={styles.parcelAddress}>{p.address}</Text>
+                                                    <Text style={styles.parcelRecipient}>
+                                                        Order #{o.id}
+                                                    </Text>
+                                                    <Text style={styles.parcelAddress}>
+                                                        {o.pickup_address} → {o.dropoff_address}
+                                                    </Text>
                                                 </View>
 
                                                 <TouchableOpacity
                                                     style={styles.detailsButton}
-                                                    onPress={() => toggleParcel(p.id)}
+                                                    onPress={() => toggleParcel(o.id)}
                                                 >
                                                     <Text style={styles.detailsButtonText}>
-                                                        {expandedParcelId === p.id ? "Hide" : "Details"}
+                                                        {expandedParcelId === o.id ? "Hide" : "Details"}
                                                     </Text>
                                                 </TouchableOpacity>
                                             </View>
 
-                                            {expandedParcelId === p.id && (
+                                            {expandedParcelId === o.id && (
                                                 <View style={styles.detailsContainer}>
-                                                    <Text style={styles.detailText}>📞 {p.phone}</Text>
-                                                    <Text style={styles.detailText}>✉️ {p.email}</Text>
-                                                    <Text style={styles.detailText}>📦 Size: {p.size}</Text>
+                                                    <Text style={styles.detailText}>
+                                                        Status: {o.status}
+                                                    </Text>
+                                                    <Text style={styles.detailText}>
+                                                        Courier ID: {o.courier_id}
+                                                    </Text>
                                                 </View>
                                             )}
                                         </View>
@@ -140,16 +146,22 @@ export default function Dashboard() {
                             </ScrollView>
                         </View>
 
+                        {/* Outgoing */}
                         <View style={styles.parcelsColumn}>
                             <Text style={styles.parcelsTitle}>Outgoing Parcels</Text>
+
                             <ScrollView style={styles.parcelScroll}>
                                 {loading ? (
                                     <ActivityIndicator size="small" color="#007AFF" />
-                                ) : Array.isArray(outgoingParcels) && outgoingParcels.length > 0 ? (
-                                    outgoingParcels.map((p) => (
-                                        <View key={p.id} style={styles.parcelCard}>
-                                            <Text style={styles.parcelRecipient}>{p.recipient}</Text>
-                                            <Text style={styles.parcelAddress}>{p.address}</Text>
+                                ) : outgoingOrders.length > 0 ? (
+                                    outgoingOrders.map((o) => (
+                                        <View key={o.id} style={styles.parcelCard}>
+                                            <Text style={styles.parcelRecipient}>
+                                                Order #{o.id}
+                                            </Text>
+                                            <Text style={styles.parcelAddress}>
+                                                {o.pickup_address} → {o.dropoff_address}
+                                            </Text>
                                         </View>
                                     ))
                                 ) : (
@@ -160,6 +172,7 @@ export default function Dashboard() {
                     </View>
                 </View>
             </View>
+
             <CustomFooter />
         </View>
     );
@@ -206,7 +219,6 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: "#333",
     },
-
 
     mainRow: { flex: 1 },
 
