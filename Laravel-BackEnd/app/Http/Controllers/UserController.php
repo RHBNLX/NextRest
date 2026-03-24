@@ -1,18 +1,38 @@
 <?php
 
 namespace App\Http\Controllers;
-
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Http\Request;
 use App\Models\User;
 
 class UserController extends Controller
 {
+    public function login(Request $request)
+    {
+        $user = User::where('email', $request->email)->first();
+
+        if (!$user || !Hash::check($request->password, $user->password)) {
+            return response()->json(['message' => 'Hibás adatok'], 401);
+        }
+        if (!method_exists($user, 'createToken')) {
+            return response()->json(['message' => 'Sanctum nincs beállítva a User modellben!'], 500);
+        }
+
+        $token = $user->createToken('auth_token')->plainTextToken;
+
+        return response()->json([
+            'access_token' => $token,
+            'token_type' => 'Bearer',
+            'user' => $user
+        ]);
+    }
+
     /**
      * Display a listing of the resource.
      */
     public function index()
     {
-        $users  = User::all();
+        $users = User::all();
         return response()->json($users, 200, options: JSON_UNESCAPED_UNICODE);
     }
 
@@ -48,7 +68,8 @@ class UserController extends Controller
         User::create([
             'name' => $request->name,
             'email' => $request->email,
-            'password' => $request-> password, //bcrypt($request->password)
+            // ITT A JAVÍTÁS: Mindig titkosítani kell mentés előtt!
+            'password' => Hash::make($request->password),
             'phone_number' => $request->phone_number,
             'role' => $request->role,
             'avatar_url' => $request->avatar_url

@@ -1,56 +1,99 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import {
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
+  ActivityIndicator,
+  Alert,
+  ScrollView,
 } from "react-native";
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useRouter } from "expo-router";
 
 import CustomFooter from "../components/footer";
 import CustomNavbar from "../components/navbar";
 
-export default function Index() {
-  const [username, setUsername] = useState("");
+export default function RegisterScreen() {
+  const router = useRouter();
+
+  // Form állapotok
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,16}$/;
+  const [phone, setPhone] = useState("");
 
-  const handleRegister = () => {
-    if (!passwordRegex.test(password)) {
-      setError(
-        "Password must be 8–16 characters and include an uppercase letter, a number, and a symbol."
-      );
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const API_URL = "https://api.nextrest.hu/api";
+
+  const handleRegister = async () => {
+    // Validáció
+    if (!name || !email || !password || !phone) {
+      setError("Minden mező kitöltése kötelező!");
       return;
     }
 
-    setError("");
-    // TODO: Submit registration
-    console.log({ username, email, password });
+    try {
+      setLoading(true);
+      setError("");
+
+      const res = await fetch(`${API_URL}/users`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+        },
+        body: JSON.stringify({
+          name: name,
+          email: email,
+          password: password,
+          phone_number: phone,
+          role: "customer",
+          avatar_url: null,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.message || "Hiba történt a regisztráció során.");
+        return;
+      }
+      Alert.alert("Siker", "Fiók sikeresen létrehozva!", [
+        { text: "Bejelentkezés", onPress: () => router.push("/auth/login") }
+      ]);
+
+    } catch (err) {
+      console.error(err);
+      setError("Hálózati hiba történt.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <View style={styles.container}>
-      <CustomNavbar title="Register" />
+      <CustomNavbar title="Regisztráció" />
 
-      <View style={styles.formContainer}>
+      <ScrollView contentContainerStyle={styles.scrollContainer}>
         <View style={styles.form}>
-          <Text style={styles.heading}>Welcome!</Text>
+          <Text style={styles.heading}>Hozzon létre fiókot!</Text>
 
           <TextInput
-            placeholder="Username"
+            placeholder="Teljes név"
             placeholderTextColor="#666"
-            autoComplete="username"
             style={styles.input}
-            value={username}
-            onChangeText={setUsername}
+            value={name}
+            onChangeText={setName}
           />
 
           <TextInput
-            placeholder="Email"
+            placeholder="Email cím"
             placeholderTextColor="#666"
-            autoComplete="email"
+            autoCapitalize="none"
             keyboardType="email-address"
             style={styles.input}
             value={email}
@@ -58,9 +101,17 @@ export default function Index() {
           />
 
           <TextInput
-            placeholder="Password"
+            placeholder="Telefonszám"
             placeholderTextColor="#666"
-            autoComplete="password"
+            keyboardType="phone-pad"
+            style={styles.input}
+            value={phone}
+            onChangeText={setPhone}
+          />
+
+          <TextInput
+            placeholder="Jelszó (min. 8 karakter)"
+            placeholderTextColor="#666"
             secureTextEntry
             style={styles.input}
             value={password}
@@ -71,13 +122,27 @@ export default function Index() {
 
           <TouchableOpacity
             activeOpacity={0.7}
-            style={styles.loginButton}
+            style={[styles.registerButton, loading && styles.disabledButton]}
             onPress={handleRegister}
+            disabled={loading}
           >
-            <Text style={styles.loginButtonText}>Register</Text>
+            {loading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.registerButtonText}>Regisztráció</Text>
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.loginLink}
+            onPress={() => router.push("/auth/login")}
+          >
+            <Text style={styles.loginLinkText}>
+              Már van fiókod? <Text style={styles.bold}>Jelentkezz be!</Text>
+            </Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </ScrollView>
 
       <CustomFooter />
     </View>
@@ -85,68 +150,38 @@ export default function Index() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#efeff6",
-  },
-
-  formContainer: {
-    flex: 1,
-    justifyContent: "flex-start",
+  container: { flex: 1, backgroundColor: "#efeff6" },
+  scrollContainer: {
+    flexGrow: 1,
+    justifyContent: "center",
     alignItems: "center",
-    marginTop: 50,
-    zIndex: 1,
+    paddingVertical: 40,
+    paddingHorizontal: 20
   },
-
-  form: {
-    width: "90%",
-    maxWidth: 400,
-  },
-
-  heading: {
-    fontSize: 28,
-    fontWeight: "600",
-    marginBottom: 24,
-    color: "#000",
-    textAlign: "center",
-  },
-
+  form: { width: "100%", maxWidth: 400 },
+  heading: { fontSize: 26, fontWeight: "700", marginBottom: 25, color: "#1a1a1a", textAlign: "center" },
   input: {
-    height: 52,
-    borderRadius: 14,
+    height: 55,
+    borderRadius: 12,
     paddingHorizontal: 16,
     fontSize: 16,
-    marginBottom: 16,
+    marginBottom: 15,
     backgroundColor: "#fff",
-    color: "#000",
+    borderWidth: 1,
+    borderColor: "#ddd",
   },
-
-  loginButton: {
-    height: 54,
-    borderRadius: 16,
+  registerButton: {
+    height: 55,
+    borderRadius: 12,
     backgroundColor: "#007AFF",
     alignItems: "center",
     justifyContent: "center",
     marginTop: 10,
-
-    shadowColor: "#007Aff",
-    shadowOpacity: 0.35,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 6,
   },
-
-  loginButtonText: {
-    color: "#fff",
-    fontSize: 17,
-    fontWeight: "600",
-    letterSpacing: 0.3,
-  },
-
-  errorText: {
-    color: "red",
-    textAlign: "center",
-    marginBottom: 10,
-    fontSize: 14,
-  },
+  disabledButton: { backgroundColor: "#a0cfff" },
+  registerButtonText: { color: "#fff", fontSize: 17, fontWeight: "600" },
+  errorText: { color: "#ff3b30", textAlign: "center", marginBottom: 15, fontSize: 14 },
+  loginLink: { marginTop: 20, alignItems: "center" },
+  loginLinkText: { color: "#666", fontSize: 15 },
+  bold: { color: "#007AFF", fontWeight: "700" },
 });

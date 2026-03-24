@@ -35,7 +35,7 @@ export default function FAQ() {
           <Text style={styles.question}>What areas do you deliver to?</Text>
           <Text style={styles.answer}>
             We currently deliver in Hungary only, with international shipping
-            coming neverin our lifespan.
+            coming never in our lifespan.
           </Text>
         </View>
 
@@ -47,7 +47,7 @@ export default function FAQ() {
         <View style={styles.faqItem}>
           <Text style={styles.question}>Who can I contact for support?</Text>
           <Text style={styles.answer}>
-            You can reach our support team via the contact page.
+            You can reach our support team via the contact page, by submitting a ticket.
           </Text>
         </View>
       </ScrollView>

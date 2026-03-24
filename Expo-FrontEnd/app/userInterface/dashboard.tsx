@@ -34,8 +34,7 @@ export default function Dashboard() {
         setExpandedParcelId(expandedParcelId === id ? null : id);
     };
 
-    // ⚠️ CHANGE THIS if using real device
-    const API_URL = "http://127.0.0.1:8000/api";
+    const API_URL = "https://api.nextrest.hu/api";
 
     const fetchOrders = async () => {
         try {
@@ -43,8 +42,6 @@ export default function Dashboard() {
 
             const res = await fetch(`${API_URL}/orders`);
             const data = await res.json();
-
-            // Basic separation (adjust later with auth logic)
             const incoming = data.filter((o: Order) => o.status === "Incoming");
             const outgoing = data.filter((o: Order) => o.status === "Outgoing");
 

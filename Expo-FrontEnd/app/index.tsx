@@ -179,7 +179,7 @@ const styles = StyleSheet.create({
 
   iconBackground: {
     position: "absolute",
-    top: "20%",
+    top: "32%",
     alignSelf: "center",
     opacity: 0.05,
     zIndex: 0,

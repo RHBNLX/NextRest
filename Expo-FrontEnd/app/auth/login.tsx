@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import {
   StyleSheet,
   Text,
@@ -6,21 +6,25 @@ import {
   TouchableOpacity,
   View,
   ActivityIndicator,
+  Alert,
 } from "react-native";
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useRouter } from "expo-router";
 
 import CustomFooter from "../components/footer";
 import CustomNavbar from "../components/navbar";
 
-export default function Index() {
-  const [username, setUsername] = useState("");
+export default function LoginScreen() {
+  const router = useRouter();
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const API_URL = "http://127.0.0.1:8000/api"; //placeholder for testing
+  const API_URL = "https://api.nextrest.hu/api";
 
   const handleLogin = async () => {
-    if (!username || !password) {
-      setError("Please enter both username and password.");
+    if (!email || !password) {
+      setError("Kérlek, add meg az email címed és a jelszavad!");
       return;
     }
 
@@ -32,9 +36,10 @@ export default function Index() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Accept": "application/json",
         },
         body: JSON.stringify({
-          email: username,
+          email: email,
           password: password,
         }),
       });
@@ -42,18 +47,29 @@ export default function Index() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.message || "Login failed.");
+        setError(data.message || "Sikertelen bejelentkezés!");
         return;
       }
-      console.log("Logged in:", data);
+      if (data.access_token) {
+        await AsyncStorage.setItem('userToken', data.access_token);
 
-      // TODO:
-      // - Save token (AsyncStorage)
-      // - Navigate to dashboard
+        if (data.user) {
+          await AsyncStorage.setItem('userData', JSON.stringify(data.user));
+        }
+
+        Alert.alert("Siker", "Sikeresen bejelentkeztél!", [
+          {
+            text: "OK",
+            onPress: () => router.replace("/support")
+          }
+        ]);
+      } else {
+        setError("A szerver nem küldött érvényes tokent.");
+      }
 
     } catch (err) {
-      console.error(err);
-      setError("Network error. Check your connection.");
+      console.error("Login Error:", err);
+      setError("Hálózati hiba történt!");
     } finally {
       setLoading(false);
     }
@@ -61,25 +77,24 @@ export default function Index() {
 
   return (
     <View style={styles.container}>
-      <CustomNavbar title="Login" />
-
+      <CustomNavbar title="Bejelentkezés" />
       <View style={styles.formContainer}>
         <View style={styles.form}>
-          <Text style={styles.heading}>Hello again!</Text>
+          <Text style={styles.heading}>Üdvözöljük újra!</Text>
 
           <TextInput
-            placeholder="Email"
+            placeholder="Email cím"
             placeholderTextColor="#666"
-            autoComplete="email"
+            autoCapitalize="none"
+            keyboardType="email-address"
             style={styles.input}
-            value={username}
-            onChangeText={setUsername}
+            value={email}
+            onChangeText={setEmail}
           />
 
           <TextInput
-            placeholder="Password"
+            placeholder="Jelszó"
             placeholderTextColor="#666"
-            autoComplete="password"
             secureTextEntry
             style={styles.input}
             value={password}
@@ -90,19 +105,23 @@ export default function Index() {
 
           <TouchableOpacity
             activeOpacity={0.7}
-            style={styles.loginButton}
+            style={[styles.loginButton, loading && styles.disabledButton]}
             onPress={handleLogin}
             disabled={loading}
           >
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.loginButtonText}>Login</Text>
-            )}
+            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.loginButtonText}>Bejelentkezés</Text>}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.registerLink}
+            onPress={() => router.push("/auth/register")}
+          >
+            <Text style={styles.registerText}>
+              Még nincs fiókod? <Text style={styles.bold}>Regisztrálj!</Text>
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
-
       <CustomFooter />
     </View>
   );
@@ -113,57 +132,73 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#efeff6",
   },
-
   formContainer: {
     flex: 1,
     justifyContent: "flex-start",
     alignItems: "center",
     marginTop: 50,
-    zIndex: 1,
+    paddingHorizontal: 20,
   },
-
   form: {
-    width: "90%",
+    width: "100%",
     maxWidth: 400,
   },
-
   heading: {
     fontSize: 28,
-    fontWeight: "600",
-    marginBottom: 24,
-    color: "#000",
+    fontWeight: "700",
+    marginBottom: 30,
+    color: "#1a1a1a",
     textAlign: "center",
   },
-
   input: {
-    height: 52,
-    borderRadius: 14,
+    height: 55,
+    borderRadius: 12,
     paddingHorizontal: 16,
     fontSize: 16,
     marginBottom: 16,
     backgroundColor: "#fff",
     color: "#000",
+    borderWidth: 1,
+    borderColor: "#ddd",
   },
-
   loginButton: {
-    height: 54,
-    borderRadius: 16,
+    height: 55,
+    borderRadius: 12,
     backgroundColor: "#007AFF",
     alignItems: "center",
     justifyContent: "center",
     marginTop: 10,
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
-
+  disabledButton: {
+    backgroundColor: "#a0cfff",
+  },
   loginButtonText: {
     color: "#fff",
     fontSize: 17,
     fontWeight: "600",
   },
-
   errorText: {
-    color: "red",
+    color: "#ff3b30",
     textAlign: "center",
-    marginBottom: 10,
+    marginBottom: 15,
     fontSize: 14,
+    fontWeight: "500",
+  },
+  registerLink: {
+    marginTop: 20,
+    alignItems: "center",
+  },
+  registerText: {
+    color: "#666",
+    fontSize: 15,
+  },
+  bold: {
+    color: "#007AFF",
+    fontWeight: "700",
   },
 });
