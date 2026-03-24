@@ -1,5 +1,4 @@
 <?php
-
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UserController;
@@ -7,6 +6,7 @@ use App\Http\Controllers\OrderController;
 use App\Http\Controllers\CourierController;
 use App\Http\Controllers\OrderStatusHistoryController;
 use App\Http\Controllers\Support_TicketController;
+use App\Http\Controllers\ChatMessageController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -21,7 +21,6 @@ Route::put('/users/{id}', [UserController::class, 'update']);
 
 Route::get('/orders', [OrderController::class, 'index']);
 
-// Ha így van, a tokennek érvényesnek kell lennie
 Route::middleware('auth:sanctum')->get('/orders/user/{id}', [OrderController::class, 'getUserOrders']);
 Route::post('/orders', [OrderController::class, 'store']);
 Route::delete('/orders/{id}', [OrderController::class, 'destroy']);
@@ -41,3 +40,8 @@ Route::get('/support_tickets', [Support_TicketController::class, 'index']);
 Route::post('/support_tickets', [Support_TicketController::class, 'store']);
 Route::delete('/support_tickets/{id}', [Support_TicketController::class, 'destroy']);
 Route::put('/support_tickets/{id}', [Support_TicketController::class, 'update']);
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/chat', [ChatMessageController::class, 'index']);
+    Route::post('/chat', [ChatMessageController::class, 'store']);
+});

@@ -41,7 +41,7 @@ export default function CustomNavbar({ title }: NavbarProps) {
   const menuItems = [
     { id: "home", label: "Home", href: "/" },
     { id: "support", label: "Support", href: "/support" },
-    ...(user ? [{ id: "dashboard", label: "Dashboard", href: "/userInterface/dashboard" }] : [
+    ...(user ? [{ id: "dashboard", label: "Dashboard", href: "/user/dashboard" }] : [
       { id: "register", label: "Register", href: "/auth/register" },
       { id: "login", label: "Login", href: "/auth/login" }
     ])
@@ -101,7 +101,7 @@ export default function CustomNavbar({ title }: NavbarProps) {
 
                     <TouchableOpacity
                       style={styles.dropdownItem}
-                      onPress={() => { setUserMenuOpen(false); router.push("/components/settings" as any); }}
+                      onPress={() => { setUserMenuOpen(false); router.push("/user/settings" as any); }}
                     >
                       <AntDesign name="setting" size={16} color="#444" />
                       <Text style={styles.dropdownText}>Settings</Text>
@@ -175,7 +175,7 @@ const styles = StyleSheet.create({
     top: 50,
     right: 0,
     backgroundColor: "#fff",
-    width: 200, // Kicsit szélesebb a több infó miatt
+    width: 200,
     borderRadius: 12,
     elevation: 10,
     shadowColor: "#000",

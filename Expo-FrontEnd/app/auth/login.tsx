@@ -55,7 +55,7 @@ export default function LoginScreen() {
         if (data.user) {
           await AsyncStorage.setItem('userData', JSON.stringify(data.user));
         }
-        router.replace("/userInterface/dashboard")
+        router.replace("/user/dashboard")
       } else {
         setError("A szerver nem küldött érvényes tokent.");
       }

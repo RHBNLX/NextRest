@@ -8,7 +8,6 @@ import {
   ActivityIndicator,
   ScrollView,
 } from "react-native";
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from "expo-router";
 
 import CustomFooter from "../components/footer";
