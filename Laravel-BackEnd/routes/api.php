@@ -20,6 +20,9 @@ Route::delete('/users/{id}', [UserController::class, 'destroy']);
 Route::put('/users/{id}', [UserController::class, 'update']);
 
 Route::get('/orders', [OrderController::class, 'index']);
+
+// Ha így van, a tokennek érvényesnek kell lennie
+Route::middleware('auth:sanctum')->get('/orders/user/{id}', [OrderController::class, 'getUserOrders']);
 Route::post('/orders', [OrderController::class, 'store']);
 Route::delete('/orders/{id}', [OrderController::class, 'destroy']);
 Route::put('/orders/{id}', [OrderController::class, 'update']);

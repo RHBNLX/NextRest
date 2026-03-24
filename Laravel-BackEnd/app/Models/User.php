@@ -1,7 +1,7 @@
 <?php
-
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
@@ -9,7 +9,7 @@ use App\Enums\UserRole;
 
 class User extends Authenticatable
 {
-    use HasApiTokens, Notifiable;
+    use HasApiTokens, HasFactory, Notifiable;
 
     protected $fillable = [
         'name',
@@ -19,6 +19,7 @@ class User extends Authenticatable
         'role',
         'avatar_url',
     ];
+
     protected $hidden = [
         'password',
         'remember_token',
@@ -29,7 +30,7 @@ class User extends Authenticatable
         'password' => 'hashed',
     ];
 
-    // Kapcsolatok
+
     public function orders()
     {
         return $this->hasMany(Order::class);
@@ -41,5 +42,5 @@ class User extends Authenticatable
     public function ratings()
     {
         return $this->hasMany(Rating::class);
-    } // Javítva: ratings (elírás volt)
+    }
 }

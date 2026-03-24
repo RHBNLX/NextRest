@@ -21,14 +21,18 @@ class Order extends Model
         //'delivery_time',
     ];
 
-    protected $casts = [
-        'status' => OrderStatus::class,
-        'package_status' => PackageStatus::class,
-    ];
+    // protected $casts = [
+    //     'status' => OrderStatus::class,
+    //     'package_status' => PackageStatus::class,
+    // ];
 
     public function user()
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+    public function courier()
+    {
+        return $this->belongsTo(Courier::class, 'courier_id');
     }
 
     public function order_status_histories()

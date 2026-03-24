@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   View,
   ActivityIndicator,
-  Alert,
 } from "react-native";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from "expo-router";
@@ -56,13 +55,7 @@ export default function LoginScreen() {
         if (data.user) {
           await AsyncStorage.setItem('userData', JSON.stringify(data.user));
         }
-
-        Alert.alert("Siker", "Sikeresen bejelentkeztél!", [
-          {
-            text: "OK",
-            onPress: () => router.replace("/support")
-          }
-        ]);
+        router.replace("/userInterface/dashboard")
       } else {
         setError("A szerver nem küldött érvényes tokent.");
       }
@@ -80,7 +73,7 @@ export default function LoginScreen() {
       <CustomNavbar title="Bejelentkezés" />
       <View style={styles.formContainer}>
         <View style={styles.form}>
-          <Text style={styles.heading}>Üdvözöljük újra!</Text>
+          <Text style={styles.heading}>Üdvözöljük!</Text>
 
           <TextInput
             placeholder="Email cím"

@@ -4,39 +4,51 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Order;
+use Illuminate\Validation\Rule; // Ne felejtsd el az importot a fájl tetején!
+use App\Enums\PackageStatus;
 
 class OrderController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index()
     {
-        $oreders  = Order::all();
-        return response()->json($oreders, 200, options: JSON_UNESCAPED_UNICODE);
+        $orders = Order::all();
+        return response()->json($orders, 200, options: JSON_UNESCAPED_UNICODE);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
+    public function getUserOrders($id)
+    {
+        try {
+            $orders = Order::where('user_id', $id)
+                // Bizonyosodj meg róla, hogy a 'created_at' létezik az adatbázisban!
+                ->orderBy('created_at', 'desc')
+                ->get();
+
+            return response()->json($orders, 200, [], JSON_UNESCAPED_UNICODE);
+        } catch (\Exception $e) {
+            // Ez segít debugolni: visszaadja a pontos SQL hibát
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
     public function store(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             'user_id' => 'required|integer|exists:users,id',
             'courier_id' => 'required|integer|exists:couriers,id',
             'pickup_address' => 'required|string|max:255',
             'dropoff_address' => 'required|string|max:255',
-            'package_status' => 'required|string|max:255',
+            'package_status' => ['required', Rule::enum(PackageStatus::class)],
             'notes' => 'nullable|string|max:255',
             'price' => 'required|integer',
             'status' => 'required|string|max:255',
         ], [
             "required" => "A(z) :attribute mező kötelező.",
             "integer" => "A :attribute mezőnek egész számnak kell lennie.",
-            "exists" => "A megadott :attribute idegenkulcsnak értéknek kell léteznie.",
+            "exists" => "A megadott :attribute nem létezik az adatbázisban.",
             "string" => "A :attribute mezőnek szöveges értéknek kell lennie.",
             "max" => "A :attribute mező nem lehet hosszabb, mint :max karakter.",
-        ],[
+            "enum" => "A(z) :attribute mező értéke érvénytelen.",
+        ], [
             "user_id" => "felhasználó azonosító",
             "courier_id" => "futár azonosító",
             "pickup_address" => "felvételi cím",
@@ -46,40 +58,14 @@ class OrderController extends Controller
             "price" => "ár",
             "status" => "állapot"
         ]);
+        Order::create($validated);
 
-        Order::create([
-            'user_id' => $request->user_id,
-            'courier_id' => $request->courier_id,
-            'pickup_address' => $request->pickup_address,
-            'dropoff_address' => $request->dropoff_address,
-            'package_status' => $request->package_status,
-            'notes' => $request->notes,
-            'price' => $request->price,
-            'status' => $request->status
-        ]);
-        return response()->json(['uzenet' => 'Sikeres rendelés létrehozás!'], 201, options: JSON_UNESCAPED_UNICODE);
-
+        return response()->json(['uzenet' => 'Sikeres rendelés létrehozás!'], 201, [], JSON_UNESCAPED_UNICODE);
     }
-
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request, string $id)
     {
         //
     }
-
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy(string $id)
     {
         $order = Order::find($id);

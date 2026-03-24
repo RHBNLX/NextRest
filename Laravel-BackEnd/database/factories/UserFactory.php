@@ -32,7 +32,7 @@ class UserFactory extends Factory
             'email' => $this->faker->unique()->safeEmail(),
             'phone_number' => $this->faker->phoneNumber(),
             'password' => Hash::make("password"),
-            'role' => $this->faker->randomElement([UserRole::cases()]),
+            'role' => $this->faker->randomElement(UserRole::cases()),
             'avatar_url' => $this->faker->optional()->imageUrl(),
         ];
     }
@@ -42,7 +42,7 @@ class UserFactory extends Factory
      */
     public function unverified(): static
     {
-        return $this->state(fn (array $attributes) => [
+        return $this->state(fn(array $attributes) => [
             'email_verified_at' => null,
         ]);
     }

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Http\Request;
 use App\Models\User;
+use Illuminate\Support\Facades\Validator;
 
 class UserController extends Controller
 {
@@ -26,19 +27,11 @@ class UserController extends Controller
             'user' => $user
         ]);
     }
-
-    /**
-     * Display a listing of the resource.
-     */
     public function index()
     {
         $users = User::all();
         return response()->json($users, 200, options: JSON_UNESCAPED_UNICODE);
     }
-
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
         $request->validate([
@@ -68,7 +61,6 @@ class UserController extends Controller
         User::create([
             'name' => $request->name,
             'email' => $request->email,
-            // ITT A JAVÍTÁS: Mindig titkosítani kell mentés előtt!
             'password' => Hash::make($request->password),
             'phone_number' => $request->phone_number,
             'role' => $request->role,
@@ -77,25 +69,32 @@ class UserController extends Controller
         return response()->json(['uzenet' => 'Sikeres felhasználó létrehozás!'], 201, options: JSON_UNESCAPED_UNICODE);
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
+    public function update(Request $request, $id)
     {
-        //
-    }
+        $user = User::find($id);
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
-    {
-        //
-    }
+        if (!$user) {
+            return response()->json(['message' => 'Felhasználó nem található'], 404);
+        }
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|string|max:255',
+            'phone_number' => 'nullable|string|max:20',
+        ]);
 
-    /**
-     * Remove the specified resource from storage.
-     */
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validációs hiba',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+        $user->name = $request->name;
+        $user->phone_number = $request->phone_number;
+        $user->save();
+        return response()->json([
+            'message' => 'Profil sikeresen frissítve!',
+            'user' => $user
+        ], 200);
+    }
     public function destroy(string $id)
     {
         $user = User::find($id);

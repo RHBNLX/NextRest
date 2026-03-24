@@ -7,6 +7,8 @@ use App\Enums\SupportTicketsStatus;
 
 class Support_Ticket extends Model
 {
+    protected $table = 'support_tickets';
+
     protected $fillable = [
         'user_id',
         'order_id',

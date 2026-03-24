@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   View,
   ActivityIndicator,
-  Alert,
   ScrollView,
 } from "react-native";
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -18,7 +17,6 @@ import CustomNavbar from "../components/navbar";
 export default function RegisterScreen() {
   const router = useRouter();
 
-  // Form állapotok
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -30,9 +28,12 @@ export default function RegisterScreen() {
   const API_URL = "https://api.nextrest.hu/api";
 
   const handleRegister = async () => {
-    // Validáció
     if (!name || !email || !password || !phone) {
       setError("Minden mező kitöltése kötelező!");
+      return;
+    }
+    if (password.length < 8) {
+      setError("A jelszónak legalább 8 karakternek kell lennie!");
       return;
     }
 
@@ -59,16 +60,19 @@ export default function RegisterScreen() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.message || "Hiba történt a regisztráció során.");
+        let fullError = data.message || "Hiba történt.";
+
+        if (data.errors) {
+          fullError = Object.values(data.errors).flat().join("\n");
+        }
+        setError(fullError);
         return;
       }
-      Alert.alert("Siker", "Fiók sikeresen létrehozva!", [
-        { text: "Bejelentkezés", onPress: () => router.push("/auth/login") }
-      ]);
+      router.replace("/auth/login");
 
     } catch (err) {
       console.error(err);
-      setError("Hálózati hiba történt.");
+      setError("Hálózati hiba történt. Ellenőrizd az internetkapcsolatot!");
     } finally {
       setLoading(false);
     }

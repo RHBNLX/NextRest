@@ -13,7 +13,7 @@ class Support_TicketController extends Controller
     public function index()
     {
         $support_tickets = Support_Ticket::all();
-        return response()->json($support_tickets, 200, options: JSON_UNESCAPED_UNICODE);    
+        return response()->json($support_tickets, 200, options: JSON_UNESCAPED_UNICODE);
     }
 
     /**
@@ -21,19 +21,19 @@ class Support_TicketController extends Controller
      */
     public function store(Request $request)
     {
-        $request -> validate([
-            'user_id' => 'required|integer|exists:users,id',
-            'order_id' => 'required|integer|exists:orders,id',
+        // 1. Validáció javítása
+        $request->validate([
+            'user_id' => 'nullable|integer|exists:users,id', // Lehet null, ha nem bejelentkezett ír
+            'order_id' => 'nullable|integer|exists:orders,id', // Lehet null, ha általános a panasz
             'subject' => 'required|string|max:255',
-            'message' => 'required|text',
+            'message' => 'required|string', // 'text' helyett 'string'!
             'status' => 'required|string|max:255',
         ], [
             "required" => "A(z) :attribute mező kötelező.",
             "integer" => "A :attribute mezőnek egész számnak kell lennie.",
-            "exists" => "A megadott :attribute idegenkulcsnak értéknek kell léteznie.",
-            "string" => "A :attribute mezőnek szöveges értéknek kell lennie.",
+            "exists" => "A megadott :attribute nem létezik.",
+            "string" => "A :attribute mezőnek szövegesnek kell lennie.",
             "max" => "A :attribute mező nem lehet hosszabb, mint :max karakter.",
-            "text" => "A :attribute mezőnek szöveges értéknek kell lennie."
         ], [
             "user_id" => "felhasználó azonosító",
             "order_id" => "rendelés azonosító",
@@ -41,14 +41,11 @@ class Support_TicketController extends Controller
             "message" => "üzenet",
             "status" => "állapot",
         ]);
-        Support_Ticket::create([
-            'user_id' => $request->user_id,
-            'order_id' => $request->order_id,
-            'subject' => $request->subject,
-            'message' => $request->message,
-            'status' => $request->status
-        ]);
-        return response()->json(['uzenet' => 'Sikeres support jegy létrehozás!'], 201, options: JSON_UNESCAPED_UNICODE);
+
+        // 2. Mentés (Mass Assignment használatával egyszerűbb)
+        Support_Ticket::create($request->all());
+
+        return response()->json(['uzenet' => 'Sikeres support jegy létrehozás!'], 201, [], JSON_UNESCAPED_UNICODE);
     }
 
     /**
