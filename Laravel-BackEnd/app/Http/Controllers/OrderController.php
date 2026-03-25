@@ -4,8 +4,9 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Order;
-use Illuminate\Validation\Rule; // Ne felejtsd el az importot a fájl tetején!
-use App\Enums\PackageStatus;
+use Illuminate\Validation\Rule;
+use App\Enums\PackageSize;
+use Illuminate\Support\Facades\Auth;
 
 class OrderController extends Controller
 {
@@ -18,14 +19,12 @@ class OrderController extends Controller
     public function getUserOrders($id)
     {
         try {
-            $orders = Order::where('user_id', $id)
-                // Bizonyosodj meg róla, hogy a 'created_at' létezik az adatbázisban!
+            $orders = Order::where('user_id', auth()->id())
                 ->orderBy('created_at', 'desc')
                 ->get();
 
             return response()->json($orders, 200, [], JSON_UNESCAPED_UNICODE);
         } catch (\Exception $e) {
-            // Ez segít debugolni: visszaadja a pontos SQL hibát
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
@@ -37,7 +36,7 @@ class OrderController extends Controller
             'courier_id' => 'required|integer|exists:couriers,id',
             'pickup_address' => 'required|string|max:255',
             'dropoff_address' => 'required|string|max:255',
-            'package_status' => ['required', Rule::enum(PackageStatus::class)],
+            'package_size' => ['required', Rule::enum(PackageSize::class)],
             'notes' => 'nullable|string|max:255',
             'price' => 'required|integer',
             'status' => 'required|string|max:255',
@@ -53,7 +52,7 @@ class OrderController extends Controller
             "courier_id" => "futár azonosító",
             "pickup_address" => "felvételi cím",
             "dropoff_address" => "kézbesítési cím",
-            "package_status" => "csomag állapota",
+            "package_size" => "csomag mérete",
             "notes" => "megjegyzés",
             "price" => "ár",
             "status" => "állapot"

@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Models\Order_Status_History;
+use App\Models\OrderStatusHistory;
 
 class OrderStatusHistoryController extends Controller
 {
@@ -12,7 +12,7 @@ class OrderStatusHistoryController extends Controller
      */
     public function index()
     {
-        $order_status_histories = Order_Status_History::all();
+        $order_status_histories = OrderStatusHistory::all();
         return response()->json($order_status_histories, 200, options: JSON_UNESCAPED_UNICODE);
     }
 
@@ -21,7 +21,7 @@ class OrderStatusHistoryController extends Controller
      */
     public function store(Request $request)
     {
-        $request -> validate([
+        $request->validate([
             'order_id' => 'required|integer|exists:orders,id',
             'old_status' => 'required|string|max:255',
             'new_status' => 'required|string|max:255',
@@ -41,7 +41,7 @@ class OrderStatusHistoryController extends Controller
             "changed_at" => "változás időpontja",
             "changed_by" => "változást végrehajtó felhasználó azonosító"
         ]);
-        Order_Status_History::create([
+        OrderStatusHistory::create([
             'order_id' => $request->order_id,
             'old_status' => $request->old_status,
             'new_status' => $request->new_status,
@@ -50,29 +50,17 @@ class OrderStatusHistoryController extends Controller
         ]);
         return response()->json(['uzenet' => 'Sikeresen változott a rendelés állapota!'], 201, options: JSON_UNESCAPED_UNICODE);
     }
-
-    /**
-     * Display the specified resource.
-     */
     public function show(string $id)
     {
         //
     }
-
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request, string $id)
     {
         //
     }
-
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy(string $id)
     {
-        $order_status_history = Order_Status_History::find($id);
+        $order_status_history = OrderStatusHistory::find($id);
         if (!$order_status_history) {
             return response()->json(['uzenet' => 'Nincs ilyen azonosítóval rendelés állapotváltozás!'], 404, options: JSON_UNESCAPED_UNICODE);
         } else {

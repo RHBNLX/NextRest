@@ -16,6 +16,6 @@ class ChatMessage extends Model
 
     public function ticket(): BelongsTo
     {
-        return $this->belongsTo(Support_Ticket::class, 'support_ticket_id');
+        return $this->belongsTo(SupportTicket::class, 'support_ticket_id');
     }
 }

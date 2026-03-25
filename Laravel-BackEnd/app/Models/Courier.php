@@ -5,9 +5,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use App\Enums\CourierStatus;
 use App\Enums\VehicleType;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Courier extends Model
 {
+    use HasFactory;
     protected $fillable = [
         'user_id',
         'vehicle_type',

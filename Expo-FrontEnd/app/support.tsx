@@ -51,6 +51,8 @@ export default function SupportScreen() {
   const [isSending, setIsSending] = useState(false);
   const [isLoadingOrders, setIsLoadingOrders] = useState(false);
 
+  const API_URL = "https://api.nextrest.hu/api";
+
   useEffect(() => {
     checkLoginStatus();
   }, []);
@@ -68,39 +70,69 @@ export default function SupportScreen() {
       const parsedUser = JSON.parse(userData);
       setUser(parsedUser);
       setIsLoggedIn(true);
-      fetchUserTickets(token);
-      fetchUserOrders(parsedUser.id, token);
+      fetchTickets();
+      fetchOrders();
     }
   };
 
-  const fetchUserTickets = async (token: string) => {
+  const fetchTickets = async () => {
     try {
-      const response = await fetch(`https://api.nextrest.hu/api/support_tickets`, {
-        headers: { "Authorization": `Bearer ${token}`, "Accept": "application/json" }
+      const token = await AsyncStorage.getItem("userToken");
+      const res = await fetch(`${API_URL}/user/tickets`, {
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Accept": "application/json"
+        }
       });
-      if (response.ok) setTickets(await response.json());
-    } catch (e) { console.error(e); }
+      const data = await res.json();
+      setTickets(Array.isArray(data) ? data : []);
+    } catch (e) {
+      console.error("Hiba a jegyek lekérésekor:", e);
+    }
   };
 
-  const fetchUserOrders = async (userId: number, token: string) => {
+  const fetchOrders = async () => {
     setIsLoadingOrders(true);
     try {
-      const response = await fetch(`https://api.nextrest.hu/api/orders/user/${userId}`, {
-        headers: { "Authorization": `Bearer ${token}`, "Accept": "application/json" }
+      const token = await AsyncStorage.getItem("userToken");
+      const userData = await AsyncStorage.getItem("userData");
+      if (!userData || !token) return;
+
+      const parsedUser = JSON.parse(userData);
+      const userId = parsedUser.id;
+
+      const res = await fetch(`${API_URL}/orders/user/${userId}`, {
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Accept": "application/json"
+        }
       });
-      if (response.ok) setOrders(await response.json());
-    } finally { setIsLoadingOrders(false); }
+
+      const data = await res.json();
+      setOrders(Array.isArray(data) ? data : []);
+    } catch (e) {
+      console.error("Hiba a rendelések lekérésekor:", e);
+    } finally {
+      setIsLoadingOrders(false);
+    }
   };
 
   const fetchChatMessages = async (ticketId: number) => {
     setIsLoadingChat(true);
     try {
       const token = await AsyncStorage.getItem('userToken');
-      const response = await fetch(`https://api.nextrest.hu/api/chat?support_ticket_id=${ticketId}`, {
+      const response = await fetch(`${API_URL}/chat?support_ticket_id=${ticketId}`, {
         headers: { "Authorization": `Bearer ${token}`, "Accept": "application/json" }
       });
-      if (response.ok) setMessages(await response.json());
-    } finally { setIsLoadingChat(false); }
+      if (response.ok) {
+        const data = await response.json();
+        setMessages(data);
+      }
+    } catch (e) {
+      console.error("Chat lekérési hiba:", e);
+    } finally {
+      setIsLoadingChat(false);
+    }
   };
 
   const handleSendTicket = async () => {
@@ -111,7 +143,7 @@ export default function SupportScreen() {
     setIsSending(true);
     try {
       const token = await AsyncStorage.getItem('userToken');
-      const response = await fetch("https://api.nextrest.hu/api/support_tickets", {
+      const response = await fetch(`${API_URL}/support_tickets`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -132,27 +164,36 @@ export default function SupportScreen() {
         setSubject("");
         setMessage("");
         setSelectedOrderId(null);
-        fetchUserTickets(token!);
+        fetchTickets();
       }
-    } catch (e) { console.error(e); } finally { setIsSending(false); }
+    } catch (e) {
+      console.error(e);
+      Alert.alert("Hiba", "Nem sikerült elküldeni a hibajegyet.");
+    } finally {
+      setIsSending(false);
+    }
   };
 
   const handleSendMessage = async () => {
     if (!chatInput.trim() || !selectedTicketId) return;
-    const token = await AsyncStorage.getItem('userToken');
-    const response = await fetch("https://api.nextrest.hu/api/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}`, "Accept": "application/json" },
-      body: JSON.stringify({ support_ticket_id: selectedTicketId, message: chatInput }),
-    });
-    if (response.ok) {
-      setChatInput("");
-      fetchChatMessages(selectedTicketId);
+    try {
+      const token = await AsyncStorage.getItem('userToken');
+      const response = await fetch(`${API_URL}/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}`, "Accept": "application/json" },
+        body: JSON.stringify({ support_ticket_id: selectedTicketId, message: chatInput }),
+      });
+      if (response.ok) {
+        setChatInput("");
+        fetchChatMessages(selectedTicketId);
+      }
+    } catch (e) {
+      console.error(e);
     }
   };
 
-  // Státusz badge helper
   const getStatusStyle = (status: string) => {
+    if (!status) return styles.statusPending;
     const s = status.toLowerCase();
     if (s === 'open' || s === 'nyitott') return styles.statusOpen;
     if (s === 'closed' || s === 'lezárt') return styles.statusClosed;
@@ -247,19 +288,32 @@ export default function SupportScreen() {
                   <View style={styles.orderPicker}>
                     <Text style={styles.label}>Válassz érintett csomagot *</Text>
                     <View style={styles.pickerBox}>
-                      {isLoadingOrders ? <ActivityIndicator /> :
-                        orders.map((o) => (
-                          <TouchableOpacity
-                            key={o.id}
-                            onPress={() => setSelectedOrderId(o.id)}
-                            style={[styles.orderItem, selectedOrderId === o.id && styles.orderItemActive]}
-                          >
-                            <Text style={{ fontSize: 13, color: selectedOrderId === o.id ? "#fff" : "#333" }}>
-                              #{o.id} | {o.pickup_address.substring(0, 25)}...
-                            </Text>
-                          </TouchableOpacity>
-                        ))
-                      }
+                      {isLoadingOrders ? (
+                        <ActivityIndicator style={{ padding: 20 }} />
+                      ) : orders.length === 0 ? (
+                        /* Ha nincs rendelés, ezt jelenítjük meg */
+                        <Text style={{ padding: 15, color: '#888', fontStyle: 'italic', textAlign: 'center' }}>
+                          Nincsenek aktív rendeléseid.
+                        </Text>
+                      ) : (
+                        /* ScrollView-ba ágyazzuk, hogy ne folyjon ki és görgethető legyen */
+                        <ScrollView nestedScrollEnabled={true} style={{ flex: 1 }}>
+                          {orders.map((o) => (
+                            <TouchableOpacity
+                              key={o.id}
+                              onPress={() => setSelectedOrderId(o.id)}
+                              style={[
+                                styles.orderItem,
+                                selectedOrderId === o.id && styles.orderItemActive,
+                              ]}
+                            >
+                              <Text style={{ fontSize: 13, color: selectedOrderId === o.id ? "#fff" : "#333" }}>
+                                #{o.id} | {o.pickup_address.substring(0, 25)}...
+                              </Text>
+                            </TouchableOpacity>
+                          ))}
+                        </ScrollView>
+                      )}
                     </View>
                   </View>
 
@@ -290,7 +344,6 @@ export default function SupportScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#f4f4f9" },
   mainLayout: { padding: 20, gap: 20, maxWidth: 1100, alignSelf: 'center', width: '100%' },
-  // Sidebar
   sidebar: { gap: 15 },
   sidebarHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 },
   sidebarTitle: { fontSize: 22, fontWeight: '800', color: '#1a1a1a' },
@@ -304,13 +357,11 @@ const styles = StyleSheet.create({
   ticketId: { fontSize: 12, fontWeight: '700', color: '#888' },
   ticketSub: { fontWeight: '700', fontSize: 15, color: '#1a1a1a', marginBottom: 4 },
   ticketDate: { fontSize: 11, color: '#999' },
-  // Status Badges
   statusBadge: { paddingVertical: 3, paddingHorizontal: 8, borderRadius: 8 },
   statusText: { fontSize: 10, fontWeight: '900', color: '#fff' },
   statusOpen: { backgroundColor: '#28a745' },
   statusClosed: { backgroundColor: '#6c757d' },
   statusPending: { backgroundColor: '#ffc107' },
-  // Chat & Content
   mainContent: { flex: 1 },
   card: { backgroundColor: "#fff", padding: 24, borderRadius: 24, shadowColor: "#000", shadowOpacity: 0.1, shadowRadius: 10, elevation: 5, minHeight: 550 },
   headerTitle: { fontSize: 20, fontWeight: '800', color: '#1a1a1a', marginBottom: 20 },
@@ -326,7 +377,6 @@ const styles = StyleSheet.create({
   chatInput: { flex: 1, backgroundColor: '#f0f2f5', borderRadius: 25, paddingHorizontal: 20, height: 45, fontSize: 14 },
   sendBtn: { backgroundColor: '#007aff', paddingHorizontal: 20, height: 45, borderRadius: 25, justifyContent: 'center' },
   sendBtnText: { color: '#fff', fontWeight: 'bold' },
-  // Form
   label: { fontSize: 14, fontWeight: '700', color: '#444', marginTop: 15, marginBottom: 8 },
   orderPicker: { marginTop: 5 },
   pickerBox: { maxHeight: 180, borderWidth: 1, borderColor: '#eee', borderRadius: 12, padding: 5, backgroundColor: '#fafafa' },

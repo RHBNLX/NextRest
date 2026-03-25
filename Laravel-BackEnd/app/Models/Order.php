@@ -4,27 +4,27 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use App\Enums\OrderStatus;
-use App\Enums\PackageStatus;
+use App\Enums\PackageSize;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Order extends Model
 {
+    use HasFactory;
     protected $fillable = [
         'user_id',
         'courier_id',
         'pickup_address',
         'dropoff_address',
-        'package_status',
+        'package_size',
         'notes',
         'price',
         'status',
-        //'pickup_time',
-        //'delivery_time',
     ];
 
-    // protected $casts = [
-    //     'status' => OrderStatus::class,
-    //     'package_status' => PackageStatus::class,
-    // ];
+    protected $casts = [
+        'status' => OrderStatus::class,
+        'package_size' => PackageSize::class,
+    ];
 
     public function user()
     {
@@ -37,7 +37,7 @@ class Order extends Model
 
     public function order_status_histories()
     {
-        return $this->hasMany(Order_Status_History::class);
+        return $this->hasMany(OrderStatusHistory::class);
     }
 
     public function rating()
@@ -47,7 +47,7 @@ class Order extends Model
 
     public function support_tickets()
     {
-        return $this->hasMany(Support_Ticket::class);
+        return $this->hasMany(SupportTicket::class);
     }
 
 

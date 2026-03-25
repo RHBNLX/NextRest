@@ -5,7 +5,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\CourierController;
 use App\Http\Controllers\OrderStatusHistoryController;
-use App\Http\Controllers\Support_TicketController;
+use App\Http\Controllers\SupportTicketController;
 use App\Http\Controllers\ChatMessageController;
 
 Route::get('/user', function (Request $request) {
@@ -36,10 +36,13 @@ Route::post('/order_status_histories', [OrderStatusHistoryController::class, 'st
 Route::delete('/order_status_histories/{id}', [OrderStatusHistoryController::class, 'destroy']);
 Route::put('/order_status_histories/{id}', [OrderStatusHistoryController::class, 'update']);
 
-Route::get('/support_tickets', [Support_TicketController::class, 'index']);
-Route::post('/support_tickets', [Support_TicketController::class, 'store']);
-Route::delete('/support_tickets/{id}', [Support_TicketController::class, 'destroy']);
-Route::put('/support_tickets/{id}', [Support_TicketController::class, 'update']);
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/user/tickets', [SupportTicketController::class, 'getUserTickets']);
+});
+Route::get('/support_tickets', [SupportTicketController::class, 'index']);
+Route::post('/support_tickets', [SupportTicketController::class, 'store']);
+Route::delete('/support_tickets/{id}', [SupportTicketController::class, 'destroy']);
+Route::put('/support_tickets/{id}', [SupportTicketController::class, 'update']);
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/chat', [ChatMessageController::class, 'index']);

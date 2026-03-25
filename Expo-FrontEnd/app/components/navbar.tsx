@@ -39,11 +39,11 @@ export default function CustomNavbar({ title }: NavbarProps) {
   }, [pathname]);
 
   const menuItems = [
-    { id: "home", label: "Home", href: "/" },
-    { id: "support", label: "Support", href: "/support" },
-    ...(user ? [{ id: "dashboard", label: "Dashboard", href: "/user/dashboard" }] : [
-      { id: "register", label: "Register", href: "/auth/register" },
-      { id: "login", label: "Login", href: "/auth/login" }
+    { id: "Főoldal", label: "Főoldal", href: "/" },
+    { id: "Supportt", label: "Support", href: "/support" },
+    ...(user ? [{ id: "Vezérlőpult", label: "Vezérlőpult", href: "/user/dashboard" }] : [
+      { id: "Regisztráció", label: "Regisztráció", href: "/auth/register" },
+      { id: "Bejelentkezés", label: "Bejelentkezés", href: "/auth/login" }
     ])
   ];
 
@@ -104,14 +104,14 @@ export default function CustomNavbar({ title }: NavbarProps) {
                       onPress={() => { setUserMenuOpen(false); router.push("/user/settings" as any); }}
                     >
                       <AntDesign name="setting" size={16} color="#444" />
-                      <Text style={styles.dropdownText}>Settings</Text>
+                      <Text style={styles.dropdownText}>Beállítások</Text>
                     </TouchableOpacity>
 
                     <View style={styles.separator} />
 
                     <TouchableOpacity style={styles.dropdownItem} onPress={handleLogout}>
                       <AntDesign name="logout" size={16} color="#ff3b30" />
-                      <Text style={[styles.dropdownText, { color: "#ff3b30" }]}>Logout</Text>
+                      <Text style={[styles.dropdownText, { color: "#ff3b30" }]}>Kijelentkezés</Text>
                     </TouchableOpacity>
                   </View>
                 )}

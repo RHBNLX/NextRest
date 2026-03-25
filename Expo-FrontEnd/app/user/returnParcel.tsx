@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import {
-    StyleSheet,
     Text,
     TextInput,
     TouchableOpacity,
@@ -8,6 +7,10 @@ import {
     ScrollView,
     ActivityIndicator,
     Alert,
+    KeyboardAvoidingView,
+    Platform,
+    Modal,
+    StyleSheet
 } from "react-native";
 import { AntDesign } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -16,213 +19,273 @@ import { useRouter } from "expo-router";
 import CustomNavbar from "../components/navbar";
 import CustomFooter from "../components/footer";
 
-export default function ReturnParcel() {
+export default function SendParcelScreen() {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
-    const [token, setToken] = useState<string | null>(null);
+    const [showConfirmModal, setShowConfirmModal] = useState(false);
+    const API_URL = "https://api.nextrest.hu/api";
 
-    // Form állapotok a Laravel Order modellhez igazítva
+    // Méret alapú konfiguráció: API érték, Ár és a Seeder szerinti futár ID
+    const sizeMapping: { [key: string]: { apiValue: string; price: number; courierId: string } } = {
+        S: { apiValue: "small", price: 990, courierId: "1" },  // Pl. Kerékpáros futár
+        M: { apiValue: "medium", price: 1490, courierId: "2" }, // Pl. Autós futár
+        L: { apiValue: "large", price: 2190, courierId: "3" },  // Pl. Furgonos futár
+    };
+
     const [formData, setFormData] = useState({
+        user_id: "",
+        courier_id: sizeMapping["S"].courierId,
+        pickup_address: "",
+        dropoff_address: "",
+        package_size: "S",
+        price: sizeMapping["S"].price,
+        status: "pending",
         receiver_name: "",
-        receiver_email: "",
-        receiver_address: "",
         receiver_phone: "",
-        weight: "",
-        size: "S", // Alapértelmezett méret (S, M, L)
         description: "",
     });
 
     useEffect(() => {
-        const getToken = async () => {
-            const storedToken = await AsyncStorage.getItem("userToken");
-            if (!storedToken) {
-                router.replace("/auth/login" as any);
-            } else {
-                setToken(storedToken);
+        const initForm = async () => {
+            try {
+                const storedUser = await AsyncStorage.getItem("userData");
+                const token = await AsyncStorage.getItem("userToken");
+
+                if (!token) {
+                    router.replace("/auth/login");
+                    return;
+                }
+
+                if (storedUser) {
+                    const user = JSON.parse(storedUser);
+                    setFormData((prev) => ({
+                        ...prev,
+                        user_id: user.id.toString()
+                    }));
+                }
+            } catch (e) {
+                console.error("Hiba az adatok betöltésekor", e);
             }
         };
-        getToken();
+        initForm();
     }, []);
 
-    const handleSubmit = async () => {
-        // Egyszerű validálás
-        if (!formData.receiver_name || !formData.receiver_address || !formData.weight) {
-            Alert.alert("Hiba", "Kérlek töltsd ki a kötelező mezőket!");
+    const handleSizeChange = (sizeKey: string) => {
+        const selected = sizeMapping[sizeKey];
+        setFormData({
+            ...formData,
+            package_size: sizeKey,
+            price: selected.price,
+            courier_id: selected.courierId // Dinamikus futárváltás méret alapján
+        });
+    };
+
+    const validateAndConfirm = () => {
+        if (!formData.pickup_address || !formData.dropoff_address || !formData.receiver_name) {
+            Alert.alert("Hiba", "Kérlek töltsd ki a kötelező (*) mezőket!");
             return;
         }
+        setShowConfirmModal(true);
+    };
+
+    const handleFinalSubmit = async () => {
+        setShowConfirmModal(false);
+        setLoading(true);
 
         try {
-            setLoading(true);
-            const response = await fetch("https://api.nextrest.hu/api/orders", {
+            const token = await AsyncStorage.getItem("userToken");
+
+            const payload = {
+                user_id: formData.user_id,
+                courier_id: formData.courier_id,
+                pickup_address: formData.pickup_address,
+                dropoff_address: formData.dropoff_address,
+                package_size: sizeMapping[formData.package_size].apiValue,
+                price: formData.price,
+                status: formData.status,
+                notes: `Címzett: ${formData.receiver_name}, Tel: ${formData.receiver_phone}. ${formData.description}`
+            };
+
+            const res = await fetch(`${API_URL}/orders`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                     "Accept": "application/json",
                     "Authorization": `Bearer ${token}`,
                 },
-                body: JSON.stringify({
-                    ...formData,
-                    // Itt a Laravel elvárásaihoz igazítsd a mezőneveket
-                    weight: parseFloat(formData.weight),
-                }),
+                body: JSON.stringify(payload),
             });
 
-            if (response.ok) {
-                Alert.alert("Siker", "Csomagküldési igényedet rögzítettük!", [
-                    { text: "OK", onPress: () => router.push("/user/dashboard" as any) }
+            const data = await res.json();
+
+            if (res.ok) {
+                Alert.alert("Siker", "Csomagküldés sikeresen rögzítve!", [
+                    { text: "Dashboard", onPress: () => router.push("/user/dashboard") }
                 ]);
             } else {
-                const errorData = await response.json();
-                Alert.alert("Hiba", errorData.message || "Valami hiba történt.");
+                let errorMsg = data.message || "Hiba történt a mentés során.";
+                if (data.errors) {
+                    errorMsg = Object.values(data.errors).flat().join("\n");
+                }
+                Alert.alert("Backend hiba", errorMsg);
             }
         } catch (error) {
-            Alert.alert("Hiba", "Nem sikerült csatlakozni a szerverhez.");
+            Alert.alert("Hiba", "Hálózati hiba történt. Ellenőrizd a kapcsolatot!");
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <View style={styles.container}>
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.container}>
             <CustomNavbar title="Csomagküldés" />
 
             <ScrollView contentContainerStyle={styles.scrollContent}>
                 <View style={styles.card}>
-                    <View style={styles.header}>
-                        <AntDesign name="form" size={24} color="#007AFF" />
-                        <Text style={styles.headerTitle}>Küldemény adatai</Text>
-                    </View>
+
+                    <Text style={styles.sectionTitle}>Útvonal adatai</Text>
+
+                    <Text style={styles.label}>Felvételi cím *</Text>
+                    <TextInput
+                        style={styles.input}
+                        placeholder="Honnan vigyük el?"
+                        value={formData.pickup_address}
+                        onChangeText={(t) => setFormData({ ...formData, pickup_address: t })}
+                    />
+
+                    <Text style={styles.label}>Kézbesítési cím *</Text>
+                    <TextInput
+                        style={styles.input}
+                        placeholder="Hová szállítsuk?"
+                        value={formData.dropoff_address}
+                        onChangeText={(t) => setFormData({ ...formData, dropoff_address: t })}
+                    />
+
+                    <View style={styles.divider} />
+
+                    <Text style={styles.sectionTitle}>Csomag adatai</Text>
 
                     <Text style={styles.label}>Címzett neve *</Text>
                     <TextInput
                         style={styles.input}
-                        placeholder="Minta János"
+                        placeholder="Címzett teljes neve"
                         value={formData.receiver_name}
                         onChangeText={(t) => setFormData({ ...formData, receiver_name: t })}
                     />
 
-                    <Text style={styles.label}>Szállítási cím *</Text>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="1234 Budapest, Példa utca 1."
-                        value={formData.receiver_address}
-                        onChangeText={(t) => setFormData({ ...formData, receiver_address: t })}
-                    />
-
                     <View style={styles.row}>
                         <View style={{ flex: 1 }}>
-                            <Text style={styles.label}>Súly (kg) *</Text>
-                            <TextInput
-                                style={styles.input}
-                                keyboardType="numeric"
-                                placeholder="5"
-                                value={formData.weight}
-                                onChangeText={(t) => setFormData({ ...formData, weight: t })}
-                            />
-                        </View>
-                        <View style={{ flex: 1, marginLeft: 10 }}>
-                            <Text style={styles.label}>Méret</Text>
+                            <Text style={styles.label}>Csomag mérete</Text>
                             <View style={styles.sizePicker}>
                                 {["S", "M", "L"].map((s) => (
                                     <TouchableOpacity
                                         key={s}
-                                        style={[styles.sizeBtn, formData.size === s && styles.sizeBtnActive]}
-                                        onPress={() => setFormData({ ...formData, size: s })}
+                                        style={[styles.sizeBtn, formData.package_size === s && styles.sizeBtnActive]}
+                                        onPress={() => handleSizeChange(s)}
                                     >
-                                        <Text style={[styles.sizeText, formData.size === s && styles.sizeTextActive]}>{s}</Text>
+                                        <Text style={[styles.sizeText, formData.package_size === s && styles.sizeTextActive]}>{s}</Text>
                                     </TouchableOpacity>
                                 ))}
                             </View>
                         </View>
                     </View>
 
-                    <Text style={styles.label}>Címzett telefonszáma</Text>
+                    <Text style={styles.label}>Telefon</Text>
                     <TextInput
-                        style={styles.input}
-                        keyboardType="phone-pad"
-                        placeholder="+36 30 123 4567"
+                        style={[styles.input, { height: 60, textAlignVertical: 'top' }]}
+                        placeholder="+36 12 345 6789"
                         value={formData.receiver_phone}
                         onChangeText={(t) => setFormData({ ...formData, receiver_phone: t })}
                     />
 
-                    <Text style={styles.label}>Megjegyzés (opcionális)</Text>
+                    <Text style={styles.label}>Megjegyzés</Text>
                     <TextInput
-                        style={[styles.input, { height: 80, textAlignVertical: "top" }]}
+                        style={[styles.input, { height: 60, textAlignVertical: 'top' }]}
                         multiline
-                        placeholder="Pl.: törékeny, kapucsengő 12..."
+                        placeholder="Pl. kapukód, törékeny áru..."
                         value={formData.description}
                         onChangeText={(t) => setFormData({ ...formData, description: t })}
                     />
 
-                    <TouchableOpacity
-                        style={styles.submitBtn}
-                        onPress={handleSubmit}
-                        disabled={loading}
-                    >
-                        {loading ? (
-                            <ActivityIndicator color="#fff" />
-                        ) : (
-                            <>
-                                <Text style={styles.submitText}>Csomag feladása</Text>
-                                <AntDesign name="arrow-right" size={20} color="#fff" />
-                            </>
-                        )}
-                    </TouchableOpacity>
+                    <View style={styles.buttonContainer}>
+                        <TouchableOpacity style={styles.cancelBtn} onPress={() => router.push("/user/dashboard")}>
+                            <Text style={styles.cancelText}>Mégse</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity style={styles.submitBtn} onPress={validateAndConfirm} disabled={loading}>
+                            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitText}>Küldés ({formData.price} Ft)</Text>}
+                        </TouchableOpacity>
+                    </View>
                 </View>
             </ScrollView>
 
+            {/* Megerősítő Modal */}
+            <Modal visible={showConfirmModal} transparent animationType="fade">
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <AntDesign name="check-circle" size={45} color="#007AFF" />
+                        <Text style={styles.modalTitle}>Rendelés összegzése</Text>
+
+                        <View style={styles.priceBadge}>
+                            <Text style={styles.priceBadge}>Fizetendő összeg{'\n'}{'\n'}
+                                <Text style={styles.priceValue}>{formData.price} Ft</Text>
+                            </Text>
+
+                        </View>
+
+                        <Text style={styles.modalText}>
+                            Választott méret: {formData.package_size === 'S' ? 'Kicsi' : formData.package_size === 'M' ? 'Közepes' : 'Nagy'}
+                        </Text>
+                        <Text style={{ fontSize: 11, color: '#999', marginBottom: 20 }}>
+                            Hozzárendelt futár: #{formData.courier_id}
+                        </Text>
+
+                        <View style={styles.modalButtons}>
+                            <TouchableOpacity style={styles.modalCancel} onPress={() => setShowConfirmModal(false)}>
+                                <Text style={styles.modalCancelText}>Módosítás</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.modalConfirm} onPress={handleFinalSubmit}>
+                                <Text style={styles.modalConfirmText}>Küldés</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
+
             <CustomFooter />
-        </View>
+        </KeyboardAvoidingView>
     );
-}
+};
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: "#efeff6" },
-    scrollContent: { padding: 20, alignItems: "center" },
-    card: {
-        backgroundColor: "#fff",
-        width: "100%",
-        maxWidth: 600,
-        borderRadius: 20,
-        padding: 24,
-        shadowColor: "#000",
-        shadowOpacity: 0.05,
-        shadowRadius: 10,
-        elevation: 5,
-    },
-    header: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 25 },
-    headerTitle: { fontSize: 22, fontWeight: "700", color: "#333" },
-    label: { fontSize: 14, fontWeight: "600", color: "#666", marginBottom: 8, marginTop: 12 },
-    input: {
-        backgroundColor: "#f9f9f9",
-        borderWidth: 1,
-        borderColor: "#e0e0e0",
-        borderRadius: 12,
-        padding: 12,
-        fontSize: 16,
-    },
-    row: { flexDirection: "row", justifyContent: "space-between" },
-    sizePicker: { flexDirection: "row", gap: 5 },
-    sizeBtn: {
-        flex: 1,
-        padding: 12,
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: "#e0e0e0",
-        alignItems: "center"
-    },
+    scrollContent: { paddingVertical: 20, paddingHorizontal: 15, alignItems: "center" },
+    card: { backgroundColor: "#fff", width: "100%", maxWidth: 500, borderRadius: 20, padding: 20, elevation: 4, shadowColor: "#000", shadowOpacity: 0.1, shadowRadius: 8 },
+    sectionTitle: { fontSize: 18, fontWeight: "800", color: "#333", marginBottom: 10, marginTop: 10 },
+    label: { fontSize: 13, fontWeight: "600", color: "#777", marginBottom: 5, marginTop: 10 },
+    input: { backgroundColor: "#fdfdfd", borderWidth: 1, borderColor: "#eee", borderRadius: 10, padding: 12, fontSize: 15 },
+    divider: { height: 1, backgroundColor: "#f0f0f0", marginVertical: 20 },
+    row: { flexDirection: "row", marginTop: 5 },
+    sizePicker: { flexDirection: "row", gap: 8, marginTop: 5 },
+    sizeBtn: { flex: 1, height: 45, borderRadius: 10, borderWidth: 1, borderColor: "#ddd", alignItems: "center", justifyContent: "center" },
     sizeBtnActive: { backgroundColor: "#007AFF", borderColor: "#007AFF" },
     sizeText: { fontWeight: "bold", color: "#666" },
     sizeTextActive: { color: "#fff" },
-    submitBtn: {
-        backgroundColor: "#007AFF",
-        flexDirection: "row",
-        justifyContent: "center",
-        alignItems: "center",
-        padding: 16,
-        borderRadius: 15,
-        marginTop: 30,
-        gap: 10,
-    },
-    submitText: { color: "#fff", fontSize: 18, fontWeight: "bold" },
+    buttonContainer: { flexDirection: "row", gap: 12, marginTop: 25 },
+    submitBtn: { flex: 2, backgroundColor: "#007AFF", padding: 15, borderRadius: 12, alignItems: "center", justifyContent: 'center' },
+    submitText: { color: "#fff", fontSize: 16, fontWeight: "bold" },
+    cancelBtn: { flex: 1, padding: 15, borderRadius: 12, alignItems: "center", borderWidth: 1, borderColor: "#ddd" },
+    cancelText: { color: "#888", fontWeight: "600" },
+    modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", padding: 15 },
+    modalContent: { backgroundColor: "#fff", borderRadius: 20, padding: 25, alignItems: "center", maxWidth: 450, alignSelf: "center" },
+    modalTitle: { fontSize: 20, fontWeight: "bold", marginBottom: 15 },
+    modalText: { fontSize: 16, marginBottom: 10 },
+    modalSubText: { fontSize: 12, color: "#999", textAlign: "center", marginTop: 10 },
+    priceBadge: { backgroundColor: "#eef6ff", padding: 15, borderRadius: 15, marginVertical: 15 },
+    priceValue: { fontSize: 28, fontWeight: "900", color: "#007AFF", textAlign: "center" },
+    modalButtons: { flexDirection: "row", gap: 10, marginTop: 20, width: "100%" },
+    modalCancel: { flex: 1, padding: 12, alignItems: "center", borderColor: "#BBB", borderWidth: 1, borderRadius: 15 },
+    modalCancelText: { color: "#aaa", marginHorizontal: 50 },
+    modalConfirm: { flex: 2, backgroundColor: "#007AFF", padding: 12, borderRadius: 10, alignItems: "center" },
+    modalConfirmText: { color: "#fff", fontWeight: "bold" }
 });

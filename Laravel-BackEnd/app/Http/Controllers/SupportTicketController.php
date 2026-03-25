@@ -3,30 +3,38 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Models\Support_Ticket;
+use App\Models\SupportTicket;
+use Illuminate\Support\Facades\Auth;
 
-class Support_TicketController extends Controller
+class SupportTicketController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
+    public function getUserTickets()
+    {
+        $userId = Auth::id();
+
+        $tickets = SupportTicket::where('user_id', $userId)
+            ->with('order')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        if ($tickets->isEmpty()) {
+            return response()->json([], 200);
+        }
+
+        return response()->json($tickets, 200, [], JSON_UNESCAPED_UNICODE);
+    }
     public function index()
     {
-        $support_tickets = Support_Ticket::all();
+        $support_tickets = SupportTicket::all();
         return response()->json($support_tickets, 200, options: JSON_UNESCAPED_UNICODE);
     }
-
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
-        // 1. Validáció javítása
         $request->validate([
-            'user_id' => 'nullable|integer|exists:users,id', // Lehet null, ha nem bejelentkezett ír
-            'order_id' => 'nullable|integer|exists:orders,id', // Lehet null, ha általános a panasz
+            'user_id' => 'nullable|integer|exists:users,id',
+            'order_id' => 'nullable|integer|exists:orders,id',
             'subject' => 'required|string|max:255',
-            'message' => 'required|string', // 'text' helyett 'string'!
+            'message' => 'required|string',
             'status' => 'required|string|max:255',
         ], [
             "required" => "A(z) :attribute mező kötelező.",
@@ -41,35 +49,21 @@ class Support_TicketController extends Controller
             "message" => "üzenet",
             "status" => "állapot",
         ]);
-
-        // 2. Mentés (Mass Assignment használatával egyszerűbb)
-        Support_Ticket::create($request->all());
+        SupportTicket::create($request->all());
 
         return response()->json(['uzenet' => 'Sikeres support jegy létrehozás!'], 201, [], JSON_UNESCAPED_UNICODE);
     }
-
-    /**
-     * Display the specified resource.
-     */
     public function show(string $id)
     {
         //
     }
-
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request, string $id)
     {
         //
     }
-
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy(string $id)
     {
-        $support_ticket = Support_Ticket::find($id);
+        $support_ticket = SupportTicket::find($id);
         if (!$support_ticket) {
             return response()->json(['uzenet' => 'Nincs ilyen azonosítóval rendelkező support jegy!'], 404, options: JSON_UNESCAPED_UNICODE);
         } else {

@@ -2,14 +2,14 @@
 
 namespace Database\Factories;
 
-use App\Models\Support_Ticket;
+use App\Models\SupportTicket;
 use App\Enums\SupportTicketsStatus;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 
 class SupportTicketFactory extends Factory
 {
-        protected $model = Support_Ticket::class;
+    protected $model = SupportTicket::class;
     public function definition(): array
     {
         return [

@@ -2,7 +2,7 @@
 
 namespace App\Enums;
 
-enum PackageStatus: string
+enum PackageSize: string
 {
     case Small = 'small';
     case Medium = 'medium';

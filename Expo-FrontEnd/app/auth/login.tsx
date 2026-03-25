@@ -6,6 +6,9 @@ import {
   TouchableOpacity,
   View,
   ActivityIndicator,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from "expo-router";
@@ -37,10 +40,7 @@ export default function LoginScreen() {
           "Content-Type": "application/json",
           "Accept": "application/json",
         },
-        body: JSON.stringify({
-          email: email,
-          password: password,
-        }),
+        body: JSON.stringify({ email, password }),
       });
 
       const data = await res.json();
@@ -49,19 +49,17 @@ export default function LoginScreen() {
         setError(data.message || "Sikertelen bejelentkezés!");
         return;
       }
+
       if (data.access_token) {
         await AsyncStorage.setItem('userToken', data.access_token);
-
         if (data.user) {
           await AsyncStorage.setItem('userData', JSON.stringify(data.user));
         }
-        router.replace("/user/dashboard")
+        router.replace("/user/dashboard");
       } else {
         setError("A szerver nem küldött érvényes tokent.");
       }
-
     } catch (err) {
-      console.error("Login Error:", err);
       setError("Hálózati hiba történt!");
     } finally {
       setLoading(false);
@@ -69,9 +67,12 @@ export default function LoginScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      style={styles.container}
+    >
       <CustomNavbar title="Bejelentkezés" />
-      <View style={styles.formContainer}>
+      <ScrollView contentContainerStyle={styles.scrollContainer}>
         <View style={styles.form}>
           <Text style={styles.heading}>Üdvözöljük!</Text>
 
@@ -98,50 +99,50 @@ export default function LoginScreen() {
 
           <TouchableOpacity
             activeOpacity={0.7}
-            style={[styles.loginButton, loading && styles.disabledButton]}
+            style={[styles.button, loading && styles.disabledButton]}
             onPress={handleLogin}
             disabled={loading}
           >
-            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.loginButtonText}>Bejelentkezés</Text>}
+            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Bejelentkezés</Text>}
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.registerLink}
+            style={styles.link}
             onPress={() => router.push("/auth/register")}
           >
-            <Text style={styles.registerText}>
+            <Text style={styles.linkText}>
               Még nincs fiókod? <Text style={styles.bold}>Regisztrálj!</Text>
             </Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </ScrollView>
       <CustomFooter />
-    </View>
+    </KeyboardAvoidingView>
   );
 }
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#efeff6",
+    backgroundColor: "#efeff6"
   },
-  formContainer: {
-    flex: 1,
-    justifyContent: "flex-start",
+  scrollContainer: {
+    flexGrow: 1,
+    justifyContent: "center",
     alignItems: "center",
-    marginTop: 50,
+    paddingVertical: 50,
     paddingHorizontal: 20,
   },
   form: {
     width: "100%",
     maxWidth: 400,
+    backgroundColor: "transparent",
   },
   heading: {
     fontSize: 28,
     fontWeight: "700",
     marginBottom: 30,
     color: "#1a1a1a",
-    textAlign: "center",
+    textAlign: "center"
   },
   input: {
     height: 55,
@@ -154,7 +155,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#ddd",
   },
-  loginButton: {
+  button: {
     height: 55,
     borderRadius: 12,
     backgroundColor: "#007AFF",
@@ -168,30 +169,30 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
   },
   disabledButton: {
-    backgroundColor: "#a0cfff",
+    backgroundColor: "#a0cfff"
   },
-  loginButtonText: {
+  buttonText: {
     color: "#fff",
     fontSize: 17,
-    fontWeight: "600",
+    fontWeight: "600"
   },
   errorText: {
     color: "#ff3b30",
     textAlign: "center",
     marginBottom: 15,
     fontSize: 14,
-    fontWeight: "500",
+    fontWeight: "500"
   },
-  registerLink: {
+  link: {
     marginTop: 20,
-    alignItems: "center",
+    alignItems: "center"
   },
-  registerText: {
+  linkText: {
     color: "#666",
-    fontSize: 15,
+    fontSize: 15
   },
   bold: {
     color: "#007AFF",
-    fontWeight: "700",
+    fontWeight: "700"
   },
 });

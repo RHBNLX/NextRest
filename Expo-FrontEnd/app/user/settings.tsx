@@ -22,6 +22,7 @@ export default function SettingsScreen() {
     const router = useRouter();
     const { width } = useWindowDimensions();
     const isDesktop = width > 768;
+    const API_URL = "https://api.nextrest.hu/api";
 
     const [user, setUser] = useState({ id: null, name: "", email: "", phone_number: "" });
     const [editModal, setEditModal] = useState(false);
@@ -41,7 +42,7 @@ export default function SettingsScreen() {
     }, []);
 
     const handleSave = async () => {
-        if (!tempUser.name) {
+        if (!tempUser.name.trim()) {
             Alert.alert("Hiba", "A név nem lehet üres!");
             return;
         }
@@ -50,7 +51,6 @@ export default function SettingsScreen() {
 
         try {
             const token = await AsyncStorage.getItem("userToken");
-            const API_URL = "https://api.nextrest.hu/api";
 
             const res = await fetch(`${API_URL}/users/${user.id}`, {
                 method: "PUT",
@@ -67,13 +67,8 @@ export default function SettingsScreen() {
 
             let data: any = {};
             const contentType = res.headers.get("content-type");
-
             if (contentType && contentType.includes("application/json")) {
-                try {
-                    data = await res.json();
-                } catch (e) {
-                    console.error("JSON parse error:", e);
-                }
+                data = await res.json();
             }
 
             if (res.ok) {
@@ -86,10 +81,9 @@ export default function SettingsScreen() {
                 const errorMessage = data?.message || `Szerver hiba: ${res.status}`;
                 Alert.alert("Hiba", errorMessage);
             }
-
         } catch (error) {
             console.error("Fetch error:", error);
-            Alert.alert("Hiba", "Hálózati hiba vagy érvénytelen válasz!");
+            Alert.alert("Hiba", "Hálózati hiba történt!");
         } finally {
             setIsSaving(false);
         }
@@ -102,11 +96,12 @@ export default function SettingsScreen() {
 
     return (
         <View style={styles.container}>
-            <CustomNavbar title="Settings" />
+            <CustomNavbar title="Beállítások" />
 
             <ScrollView contentContainerStyle={styles.scrollContent}>
                 <View style={[styles.wrapper, isDesktop && styles.row]}>
 
+                    {/* Sidebar */}
                     <View style={[styles.sidebar, isDesktop && styles.desktopSidebar]}>
                         <View style={styles.profileBrief}>
                             <View style={styles.avatar}>
@@ -118,45 +113,46 @@ export default function SettingsScreen() {
 
                         <TouchableOpacity style={styles.menuItem} onPress={() => setEditModal(true)}>
                             <AntDesign name="user" size={20} color="#007AFF" />
-                            <Text style={styles.menuItemText}>Edit Profile</Text>
+                            <Text style={styles.menuItemText}>Szerkesztés</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity style={[styles.menuItem, styles.logoutItem]} onPress={handleLogout}>
                             <AntDesign name="logout" size={20} color="#ff3b30" />
-                            <Text style={[styles.menuItemText, { color: "#ff3b30" }]}>Logout</Text>
+                            <Text style={[styles.menuItemText, { color: "#ff3b30" }]}>Kijelentkezés</Text>
                         </TouchableOpacity>
                     </View>
 
+                    {/* Main Content */}
                     <View style={[styles.mainContent, isDesktop && styles.desktopMain]}>
-                        <Text style={styles.sectionHeader}>Personal Information</Text>
+                        <Text style={styles.sectionHeader}>Személyes Információk</Text>
 
                         <View style={styles.infoCard}>
                             <View style={styles.infoField}>
-                                <Text style={styles.label}>Full Name</Text>
+                                <Text style={styles.label}>Teljes név</Text>
                                 <Text style={styles.value}>{user.name}</Text>
                             </View>
                             <View style={styles.separator} />
                             <View style={styles.infoField}>
-                                <Text style={styles.label}>Email Address</Text>
+                                <Text style={styles.label}>Email Cím</Text>
                                 <Text style={styles.value}>{user.email}</Text>
                             </View>
                             <View style={styles.separator} />
                             <View style={styles.infoField}>
-                                <Text style={styles.label}>Phone Number</Text>
+                                <Text style={styles.label}>Telefonszám</Text>
                                 <Text style={styles.value}>{user.phone_number || "Not provided"}</Text>
                             </View>
                         </View>
                     </View>
-
                 </View>
             </ScrollView>
 
+            {/* Edit Modal */}
             <Modal visible={editModal} animationType="slide" transparent>
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
-                        <Text style={styles.modalTitle}>Edit Profile</Text>
+                        <Text style={styles.modalTitle}>Profil Szerkeztés</Text>
 
-                        <Text style={styles.inputLabel}>Name</Text>
+                        <Text style={styles.inputLabel}>Név</Text>
                         <TextInput
                             style={styles.input}
                             value={tempUser.name}
@@ -164,7 +160,7 @@ export default function SettingsScreen() {
                             placeholder="Enter your name"
                         />
 
-                        <Text style={styles.inputLabel}>Phone Number</Text>
+                        <Text style={styles.inputLabel}>Telefonszám</Text>
                         <TextInput
                             style={styles.input}
                             value={tempUser.phone_number}
@@ -179,7 +175,7 @@ export default function SettingsScreen() {
                                 onPress={() => setEditModal(false)}
                                 disabled={isSaving}
                             >
-                                <Text style={styles.cancelText}>Cancel</Text>
+                                <Text style={styles.cancelText}>Mégse</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
                                 style={[styles.saveBtn, isSaving && { opacity: 0.7 }]}
@@ -189,7 +185,7 @@ export default function SettingsScreen() {
                                 {isSaving ? (
                                     <ActivityIndicator color="#fff" />
                                 ) : (
-                                    <Text style={styles.saveText}>Save Changes</Text>
+                                    <Text style={styles.saveText}>Mentés</Text>
                                 )}
                             </TouchableOpacity>
                         </View>
@@ -202,13 +198,11 @@ export default function SettingsScreen() {
     );
 }
 
-
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: "#f4f4f9" },
     scrollContent: { paddingVertical: 20, paddingHorizontal: 15, alignItems: 'center' },
     wrapper: { width: "100%", maxWidth: 1100, gap: 20 },
     row: { flexDirection: "row", alignItems: "flex-start" },
-
     sidebar: { backgroundColor: "#fff", borderRadius: 15, padding: 20, width: "100%", elevation: 2 },
     desktopSidebar: { width: 300 },
     profileBrief: { alignItems: "center", marginBottom: 20, borderBottomWidth: 1, borderBottomColor: "#eee", paddingBottom: 20 },
@@ -219,7 +213,6 @@ const styles = StyleSheet.create({
     menuItem: { flexDirection: "row", alignItems: "center", paddingVertical: 12, gap: 10 },
     menuItemText: { fontSize: 16, fontWeight: "500", color: "#444" },
     logoutItem: { marginTop: 10, borderTopWidth: 1, borderTopColor: "#eee", paddingTop: 15 },
-
     mainContent: { flex: 1, width: "100%" },
     desktopMain: { paddingLeft: 10 },
     sectionHeader: { fontSize: 20, fontWeight: "bold", color: "#333", marginBottom: 15 },
@@ -228,7 +221,6 @@ const styles = StyleSheet.create({
     label: { fontSize: 13, color: "#888", marginBottom: 3 },
     value: { fontSize: 16, color: "#333", fontWeight: "500" },
     separator: { height: 1, backgroundColor: "#eee" },
-
     modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", alignItems: "center" },
     modalContent: { backgroundColor: "#fff", width: "90%", maxWidth: 400, borderRadius: 20, padding: 25 },
     modalTitle: { fontSize: 22, fontWeight: "bold", marginBottom: 20 },

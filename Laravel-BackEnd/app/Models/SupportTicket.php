@@ -4,9 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use App\Enums\SupportTicketsStatus;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
-class Support_Ticket extends Model
+class SupportTicket extends Model
 {
+    use HasFactory;
     protected $table = 'support_tickets';
 
     protected $fillable = [

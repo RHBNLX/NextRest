@@ -2,14 +2,14 @@
 
 namespace Database\Factories;
 
-use App\Models\Order_Status_History;
+use App\Models\OrderStatusHistory;
 use App\Enums\OrderStatus;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 
 class OrderStatusHistoryFactory extends Factory
 {
-     protected $model = Order_Status_History::class;
+    protected $model = OrderStatusHistory::class;
     public function definition(): array
     {
         return [

@@ -4,9 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use App\Enums\OrderStatus;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
-class Order_Status_History extends Model
+class OrderStatusHistory extends Model
 {
+    use HasFactory;
+    protected $table = "order_status_history";
     protected $fillable = [
         'order_id',
         'old_status',

@@ -1,4 +1,5 @@
 import AntDesign from "@expo/vector-icons/AntDesign";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from "react";
 import { useRouter } from "expo-router";
 import {
@@ -37,7 +38,16 @@ export default function Dashboard() {
     const fetchOrders = async () => {
         try {
             setLoading(true);
-            const res = await fetch(`${API_URL}/orders`);
+            const token = await AsyncStorage.getItem("userToken");
+            const userData = await AsyncStorage.getItem("userData");
+            if (!userData || !token) return;
+            const res = await fetch(`${API_URL}/orders/user/{user.id}`, {
+                method: "GET",
+                headers: {
+                    "Authorization": `Bearer ${token}`,
+                    "Accept": "application/json",
+                },
+            });
             const data = await res.json();
             setOrders(Array.isArray(data) ? data : []);
         } catch (err) {
