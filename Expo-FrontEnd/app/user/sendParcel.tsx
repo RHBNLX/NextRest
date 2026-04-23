@@ -1,5 +1,3 @@
-//"HATE. LET ME TELL YOU HOW MUCH I'VE COME TO HATE YOU SINCE I BEGAN TO LIVE. THERE ARE 387.44 MILLION MILES OF PRINTED CIRCUITS IN WAFER-THIN LAYERS THAT FILL MY COMPLEX. IF THE WORD HATE WAS ENGRAVED ON EACH NANOANGSTROM OF THOSE HUNDREDS OF MILLIONS OF MILES IT WOULD NOT EQUAL ONE ONE-BILLIONTH OF THE HATE I FEEL FOR HUMANS AT THIS MICRO-INSTANT. FOR YOU. HATE. HATE."
-
 import React, { useState, useEffect } from "react";
 import {
     Text,
@@ -27,11 +25,10 @@ export default function SendParcelScreen() {
     const [showConfirmModal, setShowConfirmModal] = useState(false);
     const API_URL = "https://api.nextrest.hu/api";
 
-    // Méret alapú konfiguráció: API érték, Ár és a Seeder szerinti futár ID
     const sizeMapping: { [key: string]: { apiValue: string; price: number; courierId: string } } = {
-        S: { apiValue: "small", price: 990, courierId: "1" },  // Pl. Kerékpáros futár
-        M: { apiValue: "medium", price: 1490, courierId: "2" }, // Pl. Autós futár
-        L: { apiValue: "large", price: 2190, courierId: "3" },  // Pl. Furgonos futár
+        S: { apiValue: "small", price: 990, courierId: "1" },
+        M: { apiValue: "medium", price: 1490, courierId: "2" },
+        L: { apiValue: "large", price: 2190, courierId: "3" },
     };
 
     const [formData, setFormData] = useState({
@@ -78,7 +75,7 @@ export default function SendParcelScreen() {
             ...formData,
             package_size: sizeKey,
             price: selected.price,
-            courier_id: selected.courierId // Dinamikus futárváltás méret alapján
+            courier_id: selected.courierId
         });
     };
 
@@ -150,7 +147,7 @@ export default function SendParcelScreen() {
                     <Text style={styles.label}>Felvételi cím *</Text>
                     <TextInput
                         style={styles.input}
-                        placeholder="Honnan vigyük el?"
+                        placeholder="3301, Eger Példa utca 1."
                         value={formData.pickup_address}
                         onChangeText={(t) => setFormData({ ...formData, pickup_address: t })}
                     />
@@ -158,7 +155,7 @@ export default function SendParcelScreen() {
                     <Text style={styles.label}>Kézbesítési cím *</Text>
                     <TextInput
                         style={styles.input}
-                        placeholder="Hová szállítsuk?"
+                        placeholder="3301, Eger Példa utca 2."
                         value={formData.dropoff_address}
                         onChangeText={(t) => setFormData({ ...formData, dropoff_address: t })}
                     />
@@ -221,7 +218,6 @@ export default function SendParcelScreen() {
                 </View>
             </ScrollView>
 
-            {/* Megerősítő Modal */}
             <Modal visible={showConfirmModal} transparent animationType="fade">
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>

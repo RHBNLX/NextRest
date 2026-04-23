@@ -101,7 +101,6 @@ export default function SettingsScreen() {
             <ScrollView contentContainerStyle={styles.scrollContent}>
                 <View style={[styles.wrapper, isDesktop && styles.row]}>
 
-                    {/* Sidebar */}
                     <View style={[styles.sidebar, isDesktop && styles.desktopSidebar]}>
                         <View style={styles.profileBrief}>
                             <View style={styles.avatar}>
@@ -122,7 +121,6 @@ export default function SettingsScreen() {
                         </TouchableOpacity>
                     </View>
 
-                    {/* Main Content */}
                     <View style={[styles.mainContent, isDesktop && styles.desktopMain]}>
                         <Text style={styles.sectionHeader}>Személyes Információk</Text>
 
@@ -146,7 +144,6 @@ export default function SettingsScreen() {
                 </View>
             </ScrollView>
 
-            {/* Edit Modal */}
             <Modal visible={editModal} animationType="slide" transparent>
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>

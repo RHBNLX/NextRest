@@ -1,0 +1,13 @@
+tunnel: 4f11b129-9ade-40b5-95d0-f395bdd48857
+credentials-file: c:\Users\Rhieben\.cloudflared\4f11b129-9ade-40b5-95d0-f395bdd48857.json
+
+ingress:
+  - hostname: nextrest.hu
+
+    service: http://localhost:8081 # Ide mutat az Expo Web
+
+  - hostname: api.nextrest.hu
+
+    service: http://localhost:8000 # Ide mutat a Laravel
+
+  - service: http_status:404

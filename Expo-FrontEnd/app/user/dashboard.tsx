@@ -112,7 +112,6 @@ export default function Dashboard() {
             <ScrollView contentContainerStyle={styles.scrollContent}>
                 <View style={[styles.mainRow, { flexDirection: isMobile ? "column" : "row" }]}>
 
-                    {/* SIDEBAR: Műveletek kártya */}
                     <View style={[styles.sidebarCard, { width: isMobile ? "100%" : 280 }]}>
                         <View style={styles.sidebarSection}>
                             <Text style={styles.sidebarSectionTitle}>Csomagkezelés</Text>
@@ -141,7 +140,6 @@ export default function Dashboard() {
                         </View>
                     </View>
 
-                    {/* TARTALOM: Rendelések listája */}
                     <View style={styles.contentArea}>
                         <Text style={styles.pageTitle}>Aktív rendeléseim ({orders.length})</Text>
 

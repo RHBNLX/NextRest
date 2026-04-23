@@ -206,7 +206,6 @@ export default function SupportScreen() {
 
       <ScrollView contentContainerStyle={[styles.mainLayout, { flexDirection: isMobile ? "column" : "row" }]}>
 
-        {/* Sidebar */}
         <View style={[styles.sidebar, { width: isMobile ? "100%" : 320 }]}>
           <View style={styles.sidebarHeader}>
             <Text style={styles.sidebarTitle}>Jegyeim</Text>
@@ -243,7 +242,6 @@ export default function SupportScreen() {
           </ScrollView>
         </View>
 
-        {/* Fő Content*/}
         <View style={styles.mainContent}>
           {selectedTicketId ? (
             <View style={styles.card}>
@@ -291,12 +289,10 @@ export default function SupportScreen() {
                       {isLoadingOrders ? (
                         <ActivityIndicator style={{ padding: 20 }} />
                       ) : orders.length === 0 ? (
-                        /* Ha nincs rendelés, ezt jelenítjük meg */
                         <Text style={{ padding: 15, color: '#888', fontStyle: 'italic', textAlign: 'center' }}>
                           Nincsenek aktív rendeléseid.
                         </Text>
                       ) : (
-                        /* ScrollView-ba ágyazzuk, hogy ne folyjon ki és görgethető legyen */
                         <ScrollView nestedScrollEnabled={true} style={{ flex: 1 }}>
                           {orders.map((o) => (
                             <TouchableOpacity
