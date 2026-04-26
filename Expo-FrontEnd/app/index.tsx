@@ -10,7 +10,7 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAuth } from "../context/AuthContext";
 import CustomFooter from "./components/footer";
 import CustomNavbar from "./components/navbar";
 
@@ -79,28 +79,7 @@ export default function Index() {
   const { width } = useWindowDimensions();
   const isMobile = width < 768;
 
-  const [user, setUser] = useState<{ name: string } | null>(null);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const token = await AsyncStorage.getItem('userToken');
-        const userData = await AsyncStorage.getItem('userData');
-
-        if (token && userData) {
-          setIsLoggedIn(true);
-          setUser(JSON.parse(userData));
-        } else {
-          setIsLoggedIn(false);
-          setUser(null);
-        }
-      } catch (e) {
-        console.error("Hiba az auth ellenőrzésekor:", e);
-      }
-    };
-    checkAuth();
-  }, []);
+  const { isLoggedIn, user } = useAuth();
 
   const titleFontSize = isMobile ? 45 : 100;
   const bodySize = isMobile ? 16 : 17;
@@ -132,7 +111,6 @@ export default function Index() {
         </View>
 
         <View style={styles.rowSection}>
-
           <TouchableOpacity
             style={[styles.topCard, { width: isMobile ? "100%" : 320 }]}
             onPress={() => router.push("/auth/login")}
@@ -140,7 +118,8 @@ export default function Index() {
             <AntDesign name="user" size={40} color="#007AFF" />
             <Text style={styles.descTitle}>Bejelentkezés</Text>
             <Text style={styles.descText}>
-              Üdvözlünk újra a NextRest-nél! Jelentkezz be a fiókodba a funkciók eléréséhez.
+              Üdvözlünk újra a NextRest-nél! Jelentkezz be a fiókodba a funkciók
+              eléréséhez.
             </Text>
           </TouchableOpacity>
 
@@ -151,7 +130,8 @@ export default function Index() {
             <AntDesign name="plus-circle" size={40} color="#007AFF" />
             <Text style={styles.descTitle}>Csomagküldés</Text>
             <Text style={styles.descText}>
-              Hozz létre egy új szállítási igényt pár egyszerű lépésben, gyorsan és kényelmesen.
+              Hozz létre egy új szállítási igényt pár egyszerű lépésben, gyorsan
+              és kényelmesen.
             </Text>
           </TouchableOpacity>
 
@@ -162,20 +142,26 @@ export default function Index() {
             <AntDesign name="user-add" size={40} color="#007AFF" />
             <Text style={styles.descTitle}>Regisztráció</Text>
             <Text style={styles.descText}>
-              1 perc alatt létrehozhatod fiókodat és máris élvezheted a NextRest előnyeit!
+              1 perc alatt létrehozhatod fiókodat és máris élvezheted a NextRest
+              előnyeit!
             </Text>
           </TouchableOpacity>
         </View>
 
         <View style={styles.whiteSection}>
           <ResponsiveSection title="Bemutatkozunk">
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <View
+              style={{ flexDirection: "row", alignItems: "center", gap: 10 }}
+            >
               <AntDesign name="team" size={24} color="#007AFF" />
-              <Text style={{ fontWeight: '700', color: '#007AFF' }}>Kik vagyunk mi?</Text>
+              <Text style={{ fontWeight: "700", color: "#007AFF" }}>
+                Kik vagyunk mi?
+              </Text>
             </View>
             <Text style={[styles.bodyText, { fontSize: bodySize }]}>
-              A Nextrest egy iskolai projektnek indult, amit majdnem elvetettünk egy "jobb" ötlet miatt.
-              Szerencsére Kiss Imre Marcell és Miklós Ilián Richárd elkezdtünk dolgozni ezen a csomagszállító projekten.
+              A Nextrest egy iskolai projektnek indult, amit majdnem elvetettünk
+              egy "jobb" ötlet miatt. Szerencsére Kiss Imre Marcell és Miklós
+              Ilián Richárd elkezdtünk dolgozni ezen a csomagszállító projekten.
               Garantáljuk, hogy a csomagod épségben célba ér!
             </Text>
           </ResponsiveSection>
@@ -188,8 +174,19 @@ export default function Index() {
                 <Text style={styles.priceAmount}>990 Ft</Text>
                 <Text style={styles.priceSubtitle}>Max 5 kg</Text>
               </View>
-              <View style={[styles.priceCard, { borderColor: '#007AFF', borderWidth: 2, backgroundColor: '#f0f7ff' }]}>
-                <View style={styles.badge}><Text style={styles.badgeText}>NÉPSZERŰ</Text></View>
+              <View
+                style={[
+                  styles.priceCard,
+                  {
+                    borderColor: "#007AFF",
+                    borderWidth: 2,
+                    backgroundColor: "#f0f7ff",
+                  },
+                ]}
+              >
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>NÉPSZERŰ</Text>
+                </View>
                 <AntDesign name="code-sandbox" size={24} color="#007AFF" />
                 <Text style={styles.priceTitle}>Közepes (M)</Text>
                 <Text style={styles.priceAmount}>1 490 Ft</Text>
@@ -206,7 +203,8 @@ export default function Index() {
 
           <ResponsiveSection title="Support" marginTop={35}>
             <Text style={[styles.bodyText, { fontSize: bodySize }]}>
-              Ha bármilyen problémád adódna, ügyfélszolgálati csapatunk készséggel segít neked.
+              Ha bármilyen problémád adódna, ügyfélszolgálati csapatunk
+              készséggel segít neked.
             </Text>
             <TouchableOpacity
               onPress={() => router.push("/support")}
@@ -226,11 +224,34 @@ export default function Index() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#efeff6" },
-  iconBackground: { position: "absolute", top: "32%", alignSelf: "center", opacity: 0.05, zIndex: 0 },
+  iconBackground: {
+    position: "absolute",
+    top: "32%",
+    alignSelf: "center",
+    opacity: 0.05,
+    zIndex: 0,
+  },
   scrollContent: { padding: 16, gap: 40, zIndex: 1 },
-  hero: { backgroundColor: "#fff", alignItems: "center", borderRadius: 20, padding: 20, width: '100%' },
-  titleText: { fontWeight: "bold", textAlign: "center", color: "#007AFF", marginTop: 10 },
-  subtitleText: { textAlign: "center", color: "#333", marginTop: 12, marginBottom: 20, maxWidth: 700 },
+  hero: {
+    backgroundColor: "#fff",
+    alignItems: "center",
+    borderRadius: 20,
+    padding: 20,
+    width: "100%",
+  },
+  titleText: {
+    fontWeight: "bold",
+    textAlign: "center",
+    color: "#007AFF",
+    marginTop: 10,
+  },
+  subtitleText: {
+    textAlign: "center",
+    color: "#333",
+    marginTop: 12,
+    marginBottom: 20,
+    maxWidth: 700,
+  },
 
   rowSection: {
     flexDirection: "row",
@@ -239,7 +260,7 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     width: "100%",
     maxWidth: 1200,
-    alignSelf: 'center'
+    alignSelf: "center",
   },
 
   topCard: {
@@ -259,30 +280,72 @@ const styles = StyleSheet.create({
   },
 
   rowSectionLeft: { width: "100%", maxWidth: 1500, alignSelf: "center" },
-  whiteSection: { backgroundColor: "#fff", borderRadius: 20, padding: 25, marginBottom: 20 },
+  whiteSection: {
+    backgroundColor: "#fff",
+    borderRadius: 20,
+    padding: 25,
+    marginBottom: 20,
+  },
   bodyText: { color: "#444", lineHeight: 26, marginTop: 15 },
 
-  descTitle: { fontSize: 22, fontWeight: "700", color: "#007AFF", marginTop: 15, textAlign: "center" },
-  descText: { fontSize: 16, color: "#666", lineHeight: 24, textAlign: "center", marginTop: 10 },
+  descTitle: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: "#007AFF",
+    marginTop: 15,
+    textAlign: "center",
+  },
+  descText: {
+    fontSize: 16,
+    color: "#666",
+    lineHeight: 24,
+    textAlign: "center",
+    marginTop: 10,
+  },
 
-  pricingWrapper: { flexDirection: 'row', flexWrap: 'wrap', gap: 15, marginTop: 20 },
-  priceCard: { backgroundColor: '#fff', padding: 20, borderRadius: 15, minWidth: 160, alignItems: 'center', flex: 1, borderColor: '#eee', borderWidth: 1 },
-  priceTitle: { fontSize: 18, fontWeight: 'bold', color: '#333' },
-  priceAmount: { fontSize: 22, fontWeight: '800', color: '#007AFF', marginVertical: 5 },
-  priceSubtitle: { fontSize: 14, color: '#888' },
-  badge: { position: 'absolute', top: -10, backgroundColor: '#007AFF', paddingHorizontal: 10, borderRadius: 10 },
-  badgeText: { color: '#fff', fontSize: 10, fontWeight: 'bold' },
+  pricingWrapper: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 15,
+    marginTop: 20,
+  },
+  priceCard: {
+    backgroundColor: "#fff",
+    padding: 20,
+    borderRadius: 15,
+    minWidth: 160,
+    alignItems: "center",
+    flex: 1,
+    borderColor: "#eee",
+    borderWidth: 1,
+  },
+  priceTitle: { fontSize: 18, fontWeight: "bold", color: "#333" },
+  priceAmount: {
+    fontSize: 22,
+    fontWeight: "800",
+    color: "#007AFF",
+    marginVertical: 5,
+  },
+  priceSubtitle: { fontSize: 14, color: "#888" },
+  badge: {
+    position: "absolute",
+    top: -10,
+    backgroundColor: "#007AFF",
+    paddingHorizontal: 10,
+    borderRadius: 10,
+  },
+  badgeText: { color: "#fff", fontSize: 10, fontWeight: "bold" },
 
   actionButton: {
-    backgroundColor: '#007AFF',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "#007AFF",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: 12,
     paddingHorizontal: 25,
     borderRadius: 12,
     gap: 10,
-    alignSelf: 'flex-start'
+    alignSelf: "flex-start",
   },
-  actionButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' }
+  actionButtonText: { color: "#fff", fontSize: 16, fontWeight: "600" },
 });

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\SupportTicket;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 
 class SupportTicketController extends Controller
 {
@@ -30,7 +31,7 @@ class SupportTicketController extends Controller
     }
     public function store(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             'user_id' => 'nullable|integer|exists:users,id',
             'order_id' => 'nullable|integer|exists:orders,id',
             'subject' => 'required|string|max:255',
@@ -49,13 +50,9 @@ class SupportTicketController extends Controller
             "message" => "üzenet",
             "status" => "állapot",
         ]);
-        SupportTicket::create($request->all());
+        SupportTicket::create($validated);
 
         return response()->json(['uzenet' => 'Sikeres support jegy létrehozás!'], 201, [], JSON_UNESCAPED_UNICODE);
-    }
-    public function show(string $id)
-    {
-        //
     }
     public function update(Request $request, string $id)
     {

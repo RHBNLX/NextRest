@@ -11,7 +11,7 @@ return new class extends Migration {
             $table->id();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->foreignId('support_ticket_id')->constrained()->cascadeOnDelete();
-            $table->text('message');
+            $table->text('message'); //Meg kell oldani
             $table->timestamps();
         });
     }

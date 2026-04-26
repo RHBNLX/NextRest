@@ -39,8 +39,6 @@ class User extends Authenticatable
     {
         return $this->hasMany(Courier::class);
     }
-    public function ratings()
-    {
-        return $this->hasMany(Rating::class);
-    }
+    public function supportTickets() { }
+    public function chatMessages() { }
 }

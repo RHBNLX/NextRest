@@ -11,6 +11,7 @@ import {
   Platform,
 } from "react-native";
 import { useRouter } from "expo-router";
+import axiosInstance from "../../api/axiosInstance";
 
 import CustomFooter from "../components/footer";
 import CustomNavbar from "../components/navbar";
@@ -26,13 +27,21 @@ export default function RegisterScreen() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const API_URL = "https://api.nextrest.hu/api";
-
   const handleRegister = async () => {
+    const phoneRegex = /^(\+36|06|0036)(20|30|31|50|70)\d{7}$/;
+
     if (!name || !email || !password || !phone) {
       setError("Minden mező kitöltése kötelező!");
       return;
     }
+
+    if (!phoneRegex.test(phone)) {
+      setError(
+        "Kérjük, érvényes magyar telefonszámot adjon meg (+36xx1234567)!",
+      );
+      return;
+    }
+
     if (password.length < 8) {
       setError("A jelszónak legalább 8 karakternek kell lennie!");
       return;
@@ -42,35 +51,21 @@ export default function RegisterScreen() {
       setLoading(true);
       setError("");
 
-      const res = await fetch(`${API_URL}/users`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Accept": "application/json",
-        },
-        body: JSON.stringify({
-          name: name,
-          email: email,
-          password: password,
-          phone_number: phone,
-          role: "customer",
-          avatar_url: null,
-        }),
+      await axiosInstance.post("/users", {
+        name,
+        email,
+        password,
+        phone_number: phone,
+        role: "customer",
       });
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        let fullError = data.message || "Hiba történt.";
-        if (data.errors) {
-          fullError = Object.values(data.errors).flat().join("\n");
-        }
-        setError(fullError);
-        return;
-      }
       router.replace("/auth/login");
-    } catch (err) {
-      setError("Hálózati hiba történt!");
+    } catch (err: any) {
+      let fullError = err.response?.data?.message || "Hiba történt.";
+      if (err.response?.data?.errors) {
+        fullError = Object.values(err.response.data.errors).flat().join("\n");
+      }
+      setError(fullError);
     } finally {
       setLoading(false);
     }
@@ -130,7 +125,11 @@ export default function RegisterScreen() {
             onPress={handleRegister}
             disabled={loading}
           >
-            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Regisztráció</Text>}
+            {loading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.buttonText}>Regisztráció</Text>
+            )}
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -150,7 +149,7 @@ export default function RegisterScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#efeff6"
+    backgroundColor: "#efeff6",
   },
   scrollContainer: {
     flexGrow: 1,
@@ -169,7 +168,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     marginBottom: 30,
     color: "#1a1a1a",
-    textAlign: "center"
+    textAlign: "center",
   },
   input: {
     height: 55,
@@ -196,30 +195,30 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
   },
   disabledButton: {
-    backgroundColor: "#a0cfff"
+    backgroundColor: "#a0cfff",
   },
   buttonText: {
     color: "#fff",
     fontSize: 17,
-    fontWeight: "600"
+    fontWeight: "600",
   },
   errorText: {
     color: "#ff3b30",
     textAlign: "center",
     marginBottom: 15,
     fontSize: 14,
-    fontWeight: "500"
+    fontWeight: "500",
   },
   link: {
     marginTop: 20,
-    alignItems: "center"
+    alignItems: "center",
   },
   linkText: {
     color: "#666",
-    fontSize: 15
+    fontSize: 15,
   },
   bold: {
     color: "#007AFF",
-    fontWeight: "700"
+    fontWeight: "700",
   },
 });

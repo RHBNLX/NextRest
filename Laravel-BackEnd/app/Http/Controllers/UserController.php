@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Http\Controllers;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Http\Request;
 use App\Models\User;
@@ -38,7 +39,12 @@ class UserController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8',
-            'phone_number' => 'required|string|max:255',
+            'phone_number' => [
+                'required',
+                'string',
+                'unique:users',
+                'regex:/^(\+36|06|0036)(20|30|31|50|70)\d{7}$/'
+            ],
             'role' => 'required|string|max:255',
             'avatar_url' => 'nullable|string|max:255'
         ], [
@@ -47,6 +53,7 @@ class UserController extends Controller
             "max" => "A :attribute mező nem lehet hosszabb, mint :max karakter.",
             "email" => "A :attribute mezőnek érvényes email címnek kell lennie.",
             "unique" => "A megadott :attribute már létezik.",
+            "regex" => "A :attribute mező formátuma érvénytelen.",
             "min" => "A :attribute mezőnek legalább :min karakter hosszúnak kell lennie.",
             "nullable" => "A :attribute mező lehet üres."
         ], [
@@ -56,6 +63,10 @@ class UserController extends Controller
             "phone_number" => "telefonszám",
             "role" => "szerep",
             "avatar_url" => "avatar URL"
+        ]);
+
+        $validated = $request->validate([
+            'role' => ['required', 'in:customer'],
         ]);
 
         User::create([
@@ -77,8 +88,19 @@ class UserController extends Controller
             return response()->json(['message' => 'Felhasználó nem található'], 404);
         }
         $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:255',
-            'phone_number' => 'nullable|string|max:20',
+            'name' => 'sometimes|string|max:255',
+            'email' => 'sometimes|email|unique:users,email,' . $user->id,
+            'phone_number' => [
+                'sometimes',
+                'string',
+                'unique:users,phone_number,' . $user->id,
+                'regex:/^(\+36|06|0036)(20|30|31|50|70)\d{7}$/'
+            ],
+            'avatar_url' => 'sometimes|string',
+        ], [
+            "unique" => "A megadott :attribute már használatban van.",
+            "regex" => "A telefonszám formátuma érvénytelen.",
+            "email" => "Érvénytelen email cím."
         ]);
 
         if ($validator->fails()) {
@@ -87,9 +109,29 @@ class UserController extends Controller
                 'errors' => $validator->errors()
             ], 422);
         }
-        $user->name = $request->name;
-        $user->phone_number = $request->phone_number;
+        if ($request->has('email') && $request->has('phone_number')) {
+            if ($request->email !== $user->email && $request->phone_number !== $user->phone_number) {
+                return response()->json(['message' => 'Biztonsági okokból az email és telefonszám nem módosítható egyszerre!'], 400);
+            }
+        }
+        if ($request->has('phone_number') && $request->phone_number !== $user->phone_number) {
+            if ($user->phone_changed_at && Carbon::parse($user->phone_changed_at)->addDays(30)->isFuture()) {
+                $hatra_van = Carbon::now()->diffInDays(Carbon::parse($user->phone_changed_at)->addDays(30));
+                return response()->json(['message' => "Telefonszámot legközelebb $hatra_van nap múlva módosíthat!"], 403);
+            }
+            $user->phone_changed_at = now();
+            $user->phone_number = $request->phone_number;
+        }
+
+        if ($request->has('name'))
+            $user->name = $request->name;
+        if ($request->has('email'))
+            $user->email = $request->email;
+        if ($request->has('avatar_url'))
+            $user->avatar_url = $request->avatar_url;
+
         $user->save();
+
         return response()->json([
             'message' => 'Profil sikeresen frissítve!',
             'user' => $user
@@ -103,5 +145,9 @@ class UserController extends Controller
         }
         $user->delete();
         return response()->json(['uzenet' => 'Sikeres felhasználó törlés!'], 200, options: JSON_UNESCAPED_UNICODE);
+    }
+    public function getUserOrders()
+    {
+        $orders = Order::where('user_id', Auth::id())->get();
     }
 }

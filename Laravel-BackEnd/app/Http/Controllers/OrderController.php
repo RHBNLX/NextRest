@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\Order;
 use Illuminate\Validation\Rule;
 use App\Enums\PackageSize;
+use App\Enums\OrderStatus;
 use Illuminate\Support\Facades\Auth;
 
 class OrderController extends Controller
@@ -39,7 +40,7 @@ class OrderController extends Controller
             'package_size' => ['required', Rule::enum(PackageSize::class)],
             'notes' => 'nullable|string|max:255',
             'price' => 'required|integer',
-            'status' => 'required|string|max:255',
+            'status' => ['required', Rule::enum(OrderStatus::class)],
         ], [
             "required" => "A(z) :attribute mező kötelező.",
             "integer" => "A :attribute mezőnek egész számnak kell lennie.",

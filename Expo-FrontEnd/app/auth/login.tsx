@@ -10,19 +10,21 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
+import { useAuth } from "../../context/AuthContext";
+import axiosInstance from "../../api/axiosInstance";
 
 import CustomFooter from "../components/footer";
 import CustomNavbar from "../components/navbar";
 
 export default function LoginScreen() {
   const router = useRouter();
+  const { updateToken } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const API_URL = "https://api.nextrest.hu/api";
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -34,33 +36,18 @@ export default function LoginScreen() {
       setLoading(true);
       setError("");
 
-      const res = await fetch(`${API_URL}/login`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Accept": "application/json",
-        },
-        body: JSON.stringify({ email, password }),
-      });
+      const response = await axiosInstance.post("/login", { email, password });
+      const { access_token, token, user } = response.data;
+      const finalToken = access_token || token;
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        setError(data.message || "Sikertelen bejelentkezés!");
-        return;
-      }
-
-      if (data.access_token) {
-        await AsyncStorage.setItem('userToken', data.access_token);
-        if (data.user) {
-          await AsyncStorage.setItem('userData', JSON.stringify(data.user));
-        }
+      if (finalToken && user) {
+        await updateToken(finalToken, user);
         router.replace("/user/dashboard");
       } else {
         setError("A szerver nem küldött érvényes tokent.");
       }
-    } catch (err) {
-      setError("Hálózati hiba történt!");
+    } catch (err: any) {
+      setError(err.response?.data?.message || "Sikertelen bejelentkezés!");
     } finally {
       setLoading(false);
     }
@@ -103,7 +90,11 @@ export default function LoginScreen() {
             onPress={handleLogin}
             disabled={loading}
           >
-            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Bejelentkezés</Text>}
+            {loading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.buttonText}>Bejelentkezés</Text>
+            )}
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -123,7 +114,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#efeff6"
+    backgroundColor: "#efeff6",
   },
   scrollContainer: {
     flexGrow: 1,
@@ -142,7 +133,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     marginBottom: 30,
     color: "#1a1a1a",
-    textAlign: "center"
+    textAlign: "center",
   },
   input: {
     height: 55,
@@ -169,30 +160,30 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
   },
   disabledButton: {
-    backgroundColor: "#a0cfff"
+    backgroundColor: "#a0cfff",
   },
   buttonText: {
     color: "#fff",
     fontSize: 17,
-    fontWeight: "600"
+    fontWeight: "600",
   },
   errorText: {
     color: "#ff3b30",
     textAlign: "center",
     marginBottom: 15,
     fontSize: 14,
-    fontWeight: "500"
+    fontWeight: "500",
   },
   link: {
     marginTop: 20,
-    alignItems: "center"
+    alignItems: "center",
   },
   linkText: {
     color: "#666",
-    fontSize: 15
+    fontSize: 15,
   },
   bold: {
     color: "#007AFF",
-    fontWeight: "700"
+    fontWeight: "700",
   },
 });

@@ -7,18 +7,12 @@ use App\Models\OrderStatusHistory;
 
 class OrderStatusHistoryController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index()
     {
         $order_status_histories = OrderStatusHistory::all();
         return response()->json($order_status_histories, 200, options: JSON_UNESCAPED_UNICODE);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
         $request->validate([
@@ -49,10 +43,6 @@ class OrderStatusHistoryController extends Controller
             'changed_by' => $request->changed_by
         ]);
         return response()->json(['uzenet' => 'Sikeresen változott a rendelés állapota!'], 201, options: JSON_UNESCAPED_UNICODE);
-    }
-    public function show(string $id)
-    {
-        //
     }
     public function update(Request $request, string $id)
     {

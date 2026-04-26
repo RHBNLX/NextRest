@@ -8,14 +8,13 @@ use Illuminate\Support\Facades\Auth;
 
 class ChatMessageController extends Controller
 {
-    // Üzenetek listázása egy adott ticket-hez
     public function index(Request $request)
     {
         $request->validate([
             'support_ticket_id' => 'required|exists:support_tickets,id'
         ]);
 
-        $messages = ChatMessage::with('user:id,name,avatar_url')
+        $messages = ChatMessage::with('user:id,name,avatar_url,role')
             ->where('support_ticket_id', $request->support_ticket_id)
             ->orderBy('created_at', 'asc')
             ->get();
@@ -23,7 +22,6 @@ class ChatMessageController extends Controller
         return response()->json($messages);
     }
 
-    // Új üzenet mentése
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -32,12 +30,11 @@ class ChatMessageController extends Controller
         ]);
 
         $chatMessage = ChatMessage::create([
-            'user_id' => Auth::id(), // A bejelentkezett felhasználó ID-ja
+            'user_id' => Auth::id(),
             'support_ticket_id' => $validated['support_ticket_id'],
             'message' => $validated['message'],
         ]);
 
-        // Betöltjük a felhasználót is a válaszhoz, hogy a frontend rögtön meg tudja jeleníteni
-        return response()->json($chatMessage->load('user:id,name,avatar_url'), 201);
+        return response()->json($chatMessage->load('user:id,name,avatar_url,role'), 201);
     }
 }

@@ -18,8 +18,8 @@ class CourierFactory extends Factory
         return [
             'user_id' => \App\Models\User::factory(),
             'vehicle_type' => $this->faker->randomElement(VehicleType::cases()),
+            'license_plate' => $this->faker->regexify('[A-Z]{4}-[0-9]{3}'),
             'status' => $this->faker->randomElement(CourierStatus::cases()),
-            'rating' => $this->faker->randomFloat(1, 1, 5),
         ];
     }
 }

@@ -10,7 +10,7 @@ return new class extends Migration {
         Schema::create('orders', function (Blueprint $table) {
             $table->id();
             $table->foreignId("user_id")->constrained("users", "id")->cascadeOnDelete();
-            $table->foreignId("courier_id")->constrained("couriers", "id")->nullable()->cascadeOnDelete();
+            $table->foreignId("courier_id")->constrained("couriers", "id")->cascadeOnDelete();
             $table->string("pickup_address");
             $table->string("dropoff_address");
             $table->string("package_size");

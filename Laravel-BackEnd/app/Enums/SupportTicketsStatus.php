@@ -4,8 +4,8 @@ namespace App\Enums;
 
 enum SupportTicketsStatus: string
 {
-    case Open = 'open';
-    case InProgress = 'in_progress';
-    case Closed = 'closed';
+    case open = 'open';
+    case in_progress = 'in_progress';
+    case closed = 'closed';
 }
 ?>

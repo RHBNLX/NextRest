@@ -4,8 +4,8 @@ namespace App\Enums;
 
 enum CourierStatus: string
 {
-    case Active = 'active';
-    case Offline = 'offline';
-    case Busy = 'busy';
+    case active = 'active';
+    case offline = 'offline';
+    case busy = 'busy';
 }
 ?>

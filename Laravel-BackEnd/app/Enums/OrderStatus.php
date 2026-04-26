@@ -4,10 +4,10 @@ namespace App\Enums;
 
 enum OrderStatus: string
 {
-    case Pending = 'pending';
-    case Assigned = 'assigned';
-    case PickedUp = 'picked_up';
-    case Delivered = 'delivered';
-    case Cancelled = 'cancelled';
+    case pending = 'pending';
+    case assigned = 'assigned';
+    case picked_up = 'picked_up';
+    case delivered = 'delivered';
+    case cancelled = 'cancelled';
 }
 ?>

@@ -11,8 +11,8 @@ return new class extends Migration {
             $table->id();
             $table->foreignId("user_id")->constrained("users", "id")->cascade();
             $table->string("vehicle_type");
+            $table->string("license_plate");
             $table->string("status");
-            $table->decimal("rating", 3, 2)->default(0);
             $table->timestamps();
         });
     }

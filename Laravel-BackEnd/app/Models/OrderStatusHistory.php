@@ -27,4 +27,9 @@ class OrderStatusHistory extends Model
     {
         return $this->belongsTo(Order::class, 'order_id');
     }
+
+    public function changedByUser()
+    {
+        return $this->belongsTo(User::class, 'changed_by');
+    }
 }

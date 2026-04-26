@@ -9,18 +9,18 @@ return new class extends Migration {
         Schema::create('users', function (Blueprint $table) {
             $table->id();
             $table->string('name');
-            $table->string('email')->unique();
-            $table->string('phone_number');
+            $table->string('email');
+            $table->string('phone_number')->unique();
             $table->string('password');
             $table->string('role');
-            $table->string("avatar_url")->nullable();
+            $table->text("avatar_url")->nullable();
+            $table->timestamp('phone_changed_at')->nullable();
             $table->timestamps();
         });
     }
+
     public function down(): void
     {
         Schema::dropIfExists('users');
-        // Schema::dropIfExists('password_reset_tokens');
-        // Schema::dropIfExists('sessions');
     }
 };

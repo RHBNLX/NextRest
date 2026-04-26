@@ -40,11 +40,6 @@ class Order extends Model
         return $this->hasMany(OrderStatusHistory::class);
     }
 
-    public function rating()
-    {
-        return $this->hasOne(Rating::class);
-    }
-
     public function support_tickets()
     {
         return $this->hasMany(SupportTicket::class);

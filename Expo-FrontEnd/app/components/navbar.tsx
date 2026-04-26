@@ -9,7 +9,8 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useAuth } from "../../context/AuthContext";
+import { Image } from "react-native";
 
 interface NavbarProps {
   title: string;
@@ -19,39 +20,25 @@ export default function CustomNavbar({ title }: NavbarProps) {
   const { width } = useWindowDimensions();
   const isMobile = width < 768;
   const pathname = usePathname();
+  const { user, isLoggedIn, logout } = useAuth();
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const [user, setUser] = useState<{ name: string } | null>(null);
-
-  useEffect(() => {
-    const checkUser = async () => {
-      const userData = await AsyncStorage.getItem("userData");
-      if (userData) {
-        setUser(JSON.parse(userData));
-      } else {
-        setUser(null);
-      }
-    };
-    checkUser();
-    setMenuOpen(false);
-    setUserMenuOpen(false);
-  }, [pathname]);
 
   const menuItems = [
     { id: "Főoldal", label: "Főoldal", href: "/" },
-    { id: "Supportt", label: "Support", href: "/support" },
-    ...(user ? [{ id: "Vezérlőpult", label: "Vezérlőpult", href: "/user/dashboard" }] : [
-      { id: "Regisztráció", label: "Regisztráció", href: "/auth/register" },
-      { id: "Bejelentkezés", label: "Bejelentkezés", href: "/auth/login" }
-    ])
+    { id: "Support", label: "Support", href: "/support" },
+    ...(isLoggedIn
+      ? [{ id: "Vezérlőpult", label: "Vezérlőpult", href: "/user/dashboard" }]
+      : [
+          { id: "Regisztráció", label: "Regisztráció", href: "/auth/register" },
+          { id: "Bejelentkezés", label: "Bejelentkezés", href: "/auth/login" },
+        ]),
   ];
 
   const handleLogout = async () => {
-    await AsyncStorage.multiRemove(['userToken', 'userData']);
-    setUser(null);
+    await logout();
     setUserMenuOpen(false);
-    router.replace("/auth/login");
   };
 
   return (
@@ -63,8 +50,16 @@ export default function CustomNavbar({ title }: NavbarProps) {
           {!isMobile && (
             <View style={styles.links}>
               {menuItems.map((item) => (
-                <TouchableOpacity key={item.id} onPress={() => router.push(item.href as any)}>
-                  <Text style={[styles.link, pathname === item.href && styles.activeLink]}>
+                <TouchableOpacity
+                  key={item.id}
+                  onPress={() => router.push(item.href as any)}
+                >
+                  <Text
+                    style={[
+                      styles.link,
+                      pathname === item.href && styles.activeLink,
+                    ]}
+                  >
                     {item.label}
                   </Text>
                 </TouchableOpacity>
@@ -79,29 +74,66 @@ export default function CustomNavbar({ title }: NavbarProps) {
                   style={styles.profileTrigger}
                   onPress={() => setUserMenuOpen(!userMenuOpen)}
                 >
+                  {user.avatar_url ? (
+                    <Image
+                      source={{ uri: user.avatar_url }}
+                      style={styles.navAvatar}
+                    />
+                  ) : (
+                    <View
+                      style={[
+                        styles.navAvatar,
+                        {
+                          backgroundColor: "#007Aff",
+                          justifyContent: "center",
+                          alignItems: "center",
+                        },
+                      ]}
+                    >
+                      <Text style={{ color: "#fff", fontSize: 10 }}>
+                        {user.name[0]}
+                      </Text>
+                    </View>
+                  )}
                   <Text style={styles.userName}>{user.name} </Text>
-                  <AntDesign name={userMenuOpen ? "up" : "down"} size={12} color="#007Aff" />
+                  <AntDesign
+                    name={userMenuOpen ? "up" : "down"}
+                    size={12}
+                    color="#007Aff"
+                  />
                 </TouchableOpacity>
 
                 {userMenuOpen && (
                   <View style={styles.dropdown}>
-                    {isMobile && menuItems.map((item) => (
-                      <TouchableOpacity
-                        key={item.id}
-                        style={styles.dropdownItem}
-                        onPress={() => { setUserMenuOpen(false); router.push(item.href as any); }}
-                      >
-                        <Text style={[styles.dropdownText, pathname === item.href && styles.activeLink]}>
-                          {item.label}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
+                    {isMobile &&
+                      menuItems.map((item) => (
+                        <TouchableOpacity
+                          key={item.id}
+                          style={styles.dropdownItem}
+                          onPress={() => {
+                            setUserMenuOpen(false);
+                            router.push(item.href as any);
+                          }}
+                        >
+                          <Text
+                            style={[
+                              styles.dropdownText,
+                              pathname === item.href && styles.activeLink,
+                            ]}
+                          >
+                            {item.label}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
 
                     {isMobile && <View style={styles.separator} />}
 
                     <TouchableOpacity
                       style={styles.dropdownItem}
-                      onPress={() => { setUserMenuOpen(false); router.push("/user/settings" as any); }}
+                      onPress={() => {
+                        setUserMenuOpen(false);
+                        router.push("/user/settings" as any);
+                      }}
                     >
                       <AntDesign name="setting" size={16} color="#444" />
                       <Text style={styles.dropdownText}>Beállítások</Text>
@@ -109,9 +141,14 @@ export default function CustomNavbar({ title }: NavbarProps) {
 
                     <View style={styles.separator} />
 
-                    <TouchableOpacity style={styles.dropdownItem} onPress={handleLogout}>
+                    <TouchableOpacity
+                      style={styles.dropdownItem}
+                      onPress={handleLogout}
+                    >
                       <AntDesign name="logout" size={16} color="#ff3b30" />
-                      <Text style={[styles.dropdownText, { color: "#ff3b30" }]}>Kijelentkezés</Text>
+                      <Text style={[styles.dropdownText, { color: "#ff3b30" }]}>
+                        Kijelentkezés
+                      </Text>
                     </TouchableOpacity>
                   </View>
                 )}
@@ -119,7 +156,11 @@ export default function CustomNavbar({ title }: NavbarProps) {
             ) : (
               isMobile && (
                 <TouchableOpacity onPress={() => setMenuOpen(!menuOpen)}>
-                  <AntDesign name={menuOpen ? "close" : "menu"} size={28} color="#007Aff" />
+                  <AntDesign
+                    name={menuOpen ? "close" : "menu"}
+                    size={28}
+                    color="#007Aff"
+                  />
                 </TouchableOpacity>
               )
             )}
@@ -132,7 +173,10 @@ export default function CustomNavbar({ title }: NavbarProps) {
               <TouchableOpacity
                 key={item.id}
                 style={{ paddingVertical: 15 }}
-                onPress={() => { setMenuOpen(false); router.push(item.href as any); }}
+                onPress={() => {
+                  setMenuOpen(false);
+                  router.push(item.href as any);
+                }}
               >
                 <Text style={styles.link}>{item.label}</Text>
               </TouchableOpacity>
@@ -154,6 +198,14 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     borderBottomWidth: 1,
     borderBottomColor: "#eee",
+  },
+  navAvatar: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: "#fff",
   },
   rightActions: { marginLeft: 5 },
   title: { fontSize: 18, fontWeight: "bold", color: "#007Aff" },
@@ -185,7 +237,12 @@ const styles = StyleSheet.create({
     borderColor: "#eee",
     zIndex: 20000,
   },
-  dropdownItem: { flexDirection: "row", alignItems: "center", padding: 15, gap: 10 },
+  dropdownItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 15,
+    gap: 10,
+  },
   dropdownText: { fontSize: 15, color: "#333" },
   separator: { height: 1, backgroundColor: "#eee", marginHorizontal: 10 },
   mobileMenu: {
@@ -198,5 +255,5 @@ const styles = StyleSheet.create({
     zIndex: 10000,
     borderBottomWidth: 1,
     borderBottomColor: "#eee",
-  }
+  },
 });

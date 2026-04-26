@@ -14,9 +14,7 @@ class Courier extends Model
         'user_id',
         'vehicle_type',
         'license_plate',
-        'location',
         'status',
-        'rating',
     ];
     protected $casts = [
         'status' => CourierStatus::class,
