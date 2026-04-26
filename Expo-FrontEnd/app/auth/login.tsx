@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import {
   StyleSheet,
   Text,
@@ -9,8 +9,10 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  Switch,
+  Animated,
+  Alert, // 1. Importáljuk az Alert-et
 } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import { useAuth } from "../../context/AuthContext";
 import axiosInstance from "../../api/axiosInstance";
@@ -21,14 +23,36 @@ import CustomNavbar from "../components/navbar";
 export default function LoginScreen() {
   const router = useRouter();
   const { updateToken } = useAuth();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [mgmtCode, setMgmtCode] = useState("");
+  const [isAdmin, setIsAdmin] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = async () => {
-    if (!email || !password) {
-      setError("Kérlek, add meg az email címed és a jelszavad!");
+  const colorAnim = useRef(new Animated.Value(0)).current;
+
+  const toggleAdmin = (value: boolean) => {
+    setIsAdmin(value);
+    Animated.timing(colorAnim, {
+      toValue: value ? 1 : 0,
+      duration: 300,
+      useNativeDriver: false,
+    }).start();
+  };
+
+  const buttonColor = colorAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["#007AFF", "#34C759"],
+  });
+
+const handleLogin = async () => {
+    if (!email || !password || (isAdmin && !mgmtCode)) {
+      // Böngészőben ez a natív felugró ablakot hívja meg
+      if (typeof window !== 'undefined') {
+        window.alert("Kérlek, tölts ki minden mezőt!");
+      }
       return;
     }
 
@@ -36,18 +60,36 @@ export default function LoginScreen() {
       setLoading(true);
       setError("");
 
-      const response = await axiosInstance.post("/login", { email, password });
+      const payload = isAdmin
+        ? { email, password, mgmt_code: mgmtCode }
+        : { email, password };
+
+      const response = await axiosInstance.post("/login", payload);
       const { access_token, token, user } = response.data;
       const finalToken = access_token || token;
 
       if (finalToken && user) {
         await updateToken(finalToken, user);
-        router.replace("/user/dashboard");
+
+        // Webes környezetben a replace stabilabb navigációt biztosít
+        if (isAdmin) {
+          router.replace("/mgmt/dashboard");
+        } else {
+          router.replace("/user/dashboard");
+        }
       } else {
-        setError("A szerver nem küldött érvényes tokent.");
+        if (typeof window !== 'undefined') {
+          window.alert("Szerver hiba: A szerver nem küldött érvényes tokent.");
+        }
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || "Sikertelen bejelentkezés!");
+      const msg = err.response?.data?.message || "Sikertelen bejelentkezés!";
+      setError(msg); // A vizuális hibaüzenetet is megtartjuk a gomb felett
+      
+      // Felugró ablak a hiba részleteivel
+      if (typeof window !== 'undefined') {
+        window.alert(msg);
+      }
     } finally {
       setLoading(false);
     }
@@ -58,10 +100,22 @@ export default function LoginScreen() {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       style={styles.container}
     >
-      <CustomNavbar title="Bejelentkezés" />
+      <CustomNavbar title={isAdmin ? "Admin Belépés" : "Bejelentkezés"} />
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <View style={styles.form}>
-          <Text style={styles.heading}>Üdvözöljük!</Text>
+          <Text style={styles.heading}>
+            {isAdmin ? "Management Portál" : "Üdvözöljük!"}
+          </Text>
+
+          <View style={styles.switchRow}>
+            <Text style={styles.switchLabel}>Admin mód</Text>
+            <Switch
+              trackColor={{ false: "#ccc", true: "#34C759" }}
+              thumbColor={Platform.OS === "ios" ? "" : "#fff"}
+              onValueChange={toggleAdmin}
+              value={isAdmin}
+            />
+          </View>
 
           <TextInput
             placeholder="Email cím"
@@ -82,35 +136,64 @@ export default function LoginScreen() {
             onChangeText={setPassword}
           />
 
+          {isAdmin && (
+            <TextInput
+              placeholder="Titkos MGMT kód"
+              placeholderTextColor="#666"
+              secureTextEntry
+              style={[styles.input, styles.adminInput]}
+              value={mgmtCode}
+              onChangeText={setMgmtCode}
+            />
+          )}
+
+          {/* Az errorText-et megtartottam vizuális visszajelzésnek, de az Alert már felugrik előtte */}
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-          <TouchableOpacity
-            activeOpacity={0.7}
-            style={[styles.button, loading && styles.disabledButton]}
-            onPress={handleLogin}
-            disabled={loading}
+          <Animated.View
+            style={[
+              { borderRadius: 12, overflow: "hidden", marginTop: 10 },
+              { backgroundColor: buttonColor },
+            ]}
           >
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.buttonText}>Bejelentkezés</Text>
-            )}
-          </TouchableOpacity>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              style={[
+                styles.button,
+                { marginTop: 0 },
+                loading && styles.disabledButton,
+              ]}
+              onPress={handleLogin}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.buttonText}>
+                  {isAdmin ? "Admin Belépés" : "Bejelentkezés"}
+                </Text>
+              )}
+            </TouchableOpacity>
+          </Animated.View>
 
-          <TouchableOpacity
-            style={styles.link}
-            onPress={() => router.push("/auth/register")}
-          >
-            <Text style={styles.linkText}>
-              Még nincs fiókod? <Text style={styles.bold}>Regisztrálj!</Text>
-            </Text>
-          </TouchableOpacity>
+          {!isAdmin && (
+            <TouchableOpacity
+              style={styles.link}
+              onPress={() => router.push("/auth/register")}
+            >
+              <Text style={styles.linkText}>
+                Még nincs fiókod? <Text style={styles.bold}>Regisztrálj!</Text>
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
       </ScrollView>
       <CustomFooter />
     </KeyboardAvoidingView>
   );
 }
+
+// ... (stílusok változatlanok)
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -131,9 +214,21 @@ const styles = StyleSheet.create({
   heading: {
     fontSize: 28,
     fontWeight: "700",
-    marginBottom: 30,
+    marginBottom: 20,
     color: "#1a1a1a",
     textAlign: "center",
+  },
+  switchRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 20,
+    gap: 10,
+  },
+  switchLabel: {
+    fontSize: 16,
+    color: "#666",
+    fontWeight: "500",
   },
   input: {
     height: 55,
@@ -146,13 +241,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#ddd",
   },
+  adminInput: {
+    borderColor: "#34C759",
+    borderWidth: 1.5,
+  },
   button: {
     height: 55,
-    borderRadius: 12,
-    backgroundColor: "#007AFF",
     alignItems: "center",
     justifyContent: "center",
-    marginTop: 10,
     elevation: 3,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
@@ -160,7 +256,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
   },
   disabledButton: {
-    backgroundColor: "#a0cfff",
+    opacity: 0.6,
   },
   buttonText: {
     color: "#fff",

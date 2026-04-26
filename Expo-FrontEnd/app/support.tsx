@@ -374,7 +374,7 @@ export default function SupportScreen() {
                   </TouchableOpacity>
                 </>
               ) : (
-                <Text style={{ textAlign: "center", marginTop: 20 }}>
+                <Text style={{ textAlign: "center", marginTop: 20, fontSize: 20, color: "#ff5522", fontWeight: "600" }}>
                   Jelentkezz be a hibajegy küldéséhez.
                 </Text>
               )}

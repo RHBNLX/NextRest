@@ -9,25 +9,52 @@ use Illuminate\Support\Facades\Validator;
 
 class UserController extends Controller
 {
-    public function login(Request $request)
-    {
-        $user = User::where('email', $request->email)->first();
+public function login(Request $request)
+{
+    $request->validate([
+        'email' => 'required|email',
+        'password' => 'required',
+        'mgmt_code' => 'nullable|string'
+    ]);
 
-        if (!$user || !Hash::check($request->password, $user->password)) {
-            return response()->json(['message' => 'Hibás adatok'], 401);
-        }
-        if (!method_exists($user, 'createToken')) {
-            return response()->json(['message' => 'Sanctum nincs beállítva a User modellben!'], 500);
-        }
+    $user = User::where('email', $request->email)->first();
 
-        $token = $user->createToken('auth_token')->plainTextToken;
-
-        return response()->json([
-            'access_token' => $token,
-            'token_type' => 'Bearer',
-            'user' => $user
-        ]);
+    // 1. Alap hitelesítés
+    if (!$user || !Hash::check($request->password, $user->password)) {
+        return response()->json(['message' => 'Hibás adatok'], 401);
     }
+
+    // 2. Admin ellenőrzés - CSAK ha valóban van kitöltött mgmt_code
+    // A trim() biztosítja, hogy a szóközök/üres mező ne zavarjon be
+    $providedCode = trim($request->mgmt_code ?? '');
+
+    if (!empty($providedCode)) {
+        $secret = env('mgmtCode');
+
+        if ($providedCode !== $secret) {
+            return response()->json(['message' => 'Érvénytelen menedzsment kód!'], 403);
+        }
+
+        // Enum alapú szerepkör ellenőrzés
+        $roleValue = $user->role instanceof \App\Enums\UserRole 
+            ? $user->role->value 
+            : $user->role;
+
+        if (strtolower($roleValue) !== 'admin') {
+            return response()->json(['message' => 'Nincs jogosultságod az admin belépéshez!'], 403);
+        }
+    }
+
+    // 3. Ha idáig eljutott, a login sikeres (vagy sima, vagy valid admin)
+    $token = $user->createToken('auth_token')->plainTextToken;
+
+    return response()->json([
+        'access_token' => $token,
+        'user' => $user
+    ], 200, [], JSON_UNESCAPED_UNICODE);
+}
+
+
     public function index()
     {
         $users = User::all();

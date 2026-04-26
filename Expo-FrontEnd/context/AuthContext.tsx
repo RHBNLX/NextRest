@@ -7,6 +7,7 @@ interface User {
   name: string;
   email: string;
   phone_number?: string;
+  role: string;
   avatar_url?: string;
   phone_changed_at?: string | null;
 }

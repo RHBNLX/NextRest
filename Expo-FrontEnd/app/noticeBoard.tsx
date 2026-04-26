@@ -122,7 +122,7 @@ export default function NoticeBoardScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#f4f4f9" },
+  container: { flex: 1, backgroundColor: "#efeff6" },
   scrollContent: {
     padding: 20,
     maxWidth: 1100,
