@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState } from "react";
 import {
   StyleSheet,
   Text,
@@ -9,277 +9,184 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  Switch,
-  Animated,
-  Alert, // 1. Importáljuk az Alert-et
+  Alert,
+  Modal,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, Href } from "expo-router";
 import { useAuth } from "../../context/AuthContext";
+import { usePageTitle } from "../../hooks";
 import axiosInstance from "../../api/axiosInstance";
 
 import CustomFooter from "../components/footer";
 import CustomNavbar from "../components/navbar";
 
 export default function LoginScreen() {
+  usePageTitle("Belépés");
   const router = useRouter();
   const { updateToken } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [mgmtCode, setMgmtCode] = useState("");
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const colorAnim = useRef(new Animated.Value(0)).current;
+  const [showAdminModal, setShowAdminModal] = useState(false);
+  const [tempToken, setTempToken] = useState<string | null>(null);
+  const [tempUser, setTempUser] = useState<any>(null);
 
-  const toggleAdmin = (value: boolean) => {
-    setIsAdmin(value);
-    Animated.timing(colorAnim, {
-      toValue: value ? 1 : 0,
-      duration: 300,
-      useNativeDriver: false,
-    }).start();
+  const finalizeAuth = async (token: string, user: any, path: string) => {
+    try {
+      await updateToken(token, user);
+      
+      await new Promise((resolve) => setTimeout(resolve, 150));
+      
+      router.replace(path as Href);
+    } catch (e) {
+      Alert.alert("Hiba", "Hiba történt a munkamenet mentésekor.");
+    }
   };
 
-  const buttonColor = colorAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ["#007AFF", "#34C759"],
-  });
-
-const handleLogin = async () => {
-    if (!email || !password || (isAdmin && !mgmtCode)) {
-      // Böngészőben ez a natív felugró ablakot hívja meg
-      if (typeof window !== 'undefined') {
-        window.alert("Kérlek, tölts ki minden mezőt!");
-      }
+  const handleLogin = async () => {
+    if (!email || !password) {
+      Alert.alert("Hiba", "Kérjük, töltsd ki az összes mezőt!");
       return;
     }
 
+    setLoading(true);
     try {
-      setLoading(true);
-      setError("");
+      const response = await axiosInstance.post("/login", { email, password });
+      const { access_token, user } = response.data;
 
-      const payload = isAdmin
-        ? { email, password, mgmt_code: mgmtCode }
-        : { email, password };
-
-      const response = await axiosInstance.post("/login", payload);
-      const { access_token, token, user } = response.data;
-      const finalToken = access_token || token;
-
-      if (finalToken && user) {
-        await updateToken(finalToken, user);
-
-        // Webes környezetben a replace stabilabb navigációt biztosít
-        if (isAdmin) {
-          router.replace("/mgmt/dashboard");
-        } else {
-          router.replace("/user/dashboard");
-        }
+      if (user.role === "admin") {
+        setTempToken(access_token);
+        setTempUser(user);
+        setShowAdminModal(true);
+        setLoading(false);
+      } else if (user.role === "courier") {
+        await finalizeAuth(access_token, user, "/courier/dashboard");
       } else {
-        if (typeof window !== 'undefined') {
-          window.alert("Szerver hiba: A szerver nem küldött érvényes tokent.");
-        }
+        await finalizeAuth(access_token, user, "/user/dashboard");
       }
     } catch (err: any) {
-      const msg = err.response?.data?.message || "Sikertelen bejelentkezés!";
-      setError(msg); // A vizuális hibaüzenetet is megtartjuk a gomb felett
-      
-      // Felugró ablak a hiba részleteivel
-      if (typeof window !== 'undefined') {
-        window.alert(msg);
-      }
-    } finally {
+      const msg = err.response?.data?.message || "Hibás bejelentkezési adatok!";
+      Alert.alert("Hiba", msg);
       setLoading(false);
     }
   };
 
+  const handleAdminModalSubmit = async () => {
+    if (!mgmtCode) {
+      Alert.alert("Hiba", "Kérjük, adja meg a menedzsment kódot!");
+      return;
+    }
+
+    try {
+      const response = await axiosInstance.post("/login", {
+        email,
+        password,
+        mgmt_code: mgmtCode,
+      });
+
+      const { access_token, user } = response.data;
+      setShowAdminModal(false);
+      await finalizeAuth(access_token, user, "/mgmt/dashboard");
+    } catch (err: any) {
+      const msg = err.response?.data?.message || "Érvénytelen menedzsment kód!";
+      Alert.alert("Hozzáférés megtagadva", msg);
+      setMgmtCode("");
+    }
+  };
+
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      style={styles.container}
-    >
-      <CustomNavbar title={isAdmin ? "Admin Belépés" : "Bejelentkezés"} />
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
-        <View style={styles.form}>
-          <Text style={styles.heading}>
-            {isAdmin ? "Management Portál" : "Üdvözöljük!"}
-          </Text>
+    <View style={{ flex: 1, backgroundColor: "#efeff6" }}>
+      <CustomNavbar title="Belépés" />
+      <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.container}
+        >
+          <View style={styles.form}>
+            <Text style={styles.heading}>Bejelentkezés</Text>
 
-          <View style={styles.switchRow}>
-            <Text style={styles.switchLabel}>Admin mód</Text>
-            <Switch
-              trackColor={{ false: "#ccc", true: "#34C759" }}
-              thumbColor={Platform.OS === "ios" ? "" : "#fff"}
-              onValueChange={toggleAdmin}
-              value={isAdmin}
-            />
-          </View>
-
-          <TextInput
-            placeholder="Email cím"
-            placeholderTextColor="#666"
-            autoCapitalize="none"
-            keyboardType="email-address"
-            style={styles.input}
-            value={email}
-            onChangeText={setEmail}
-          />
-
-          <TextInput
-            placeholder="Jelszó"
-            placeholderTextColor="#666"
-            secureTextEntry
-            style={styles.input}
-            value={password}
-            onChangeText={setPassword}
-          />
-
-          {isAdmin && (
             <TextInput
-              placeholder="Titkos MGMT kód"
-              placeholderTextColor="#666"
+              style={styles.input}
+              placeholder="Email cím"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+
+            <TextInput
+              style={styles.input}
+              placeholder="Jelszó"
+              value={password}
+              onChangeText={setPassword}
               secureTextEntry
-              style={[styles.input, styles.adminInput]}
+            />
+
+            <TouchableOpacity onPress={handleLogin} disabled={loading}>
+              <View style={[styles.button, { backgroundColor: "#007AFF" }]}>
+                {loading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.buttonText}>Belépés</Text>
+                )}
+              </View>
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </ScrollView>
+
+      <Modal visible={showAdminModal} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Menedzsment azonosítás</Text>
+            <Text style={styles.modalSubText}>Adminisztrátor észlelve. Adja meg a .env-ben beállított kódot:</Text>
+            
+            <TextInput
+              style={[styles.input, styles.adminInput, { width: "100%", textAlign: "center" }]}
+              placeholder="Kód"
               value={mgmtCode}
               onChangeText={setMgmtCode}
+              secureTextEntry
+              keyboardType="number-pad"
+              autoFocus
             />
-          )}
 
-          {/* Az errorText-et megtartottam vizuális visszajelzésnek, de az Alert már felugrik előtte */}
-          {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
-          <Animated.View
-            style={[
-              { borderRadius: 12, overflow: "hidden", marginTop: 10 },
-              { backgroundColor: buttonColor },
-            ]}
-          >
-            <TouchableOpacity
-              activeOpacity={0.7}
-              style={[
-                styles.button,
-                { marginTop: 0 },
-                loading && styles.disabledButton,
-              ]}
-              onPress={handleLogin}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.buttonText}>
-                  {isAdmin ? "Admin Belépés" : "Bejelentkezés"}
-                </Text>
-              )}
-            </TouchableOpacity>
-          </Animated.View>
-
-          {!isAdmin && (
-            <TouchableOpacity
-              style={styles.link}
-              onPress={() => router.push("/auth/register")}
-            >
-              <Text style={styles.linkText}>
-                Még nincs fiókod? <Text style={styles.bold}>Regisztrálj!</Text>
-              </Text>
-            </TouchableOpacity>
-          )}
+            <View style={{ flexDirection: "row", gap: 10, width: "100%" }}>
+              <TouchableOpacity 
+                style={[styles.button, { flex: 1, backgroundColor: "#8e8e93" }]} 
+                onPress={() => setShowAdminModal(false)}
+              >
+                <Text style={styles.buttonText}>Mégse</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.button, { flex: 1, backgroundColor: "#34C759" }]} 
+                onPress={handleAdminModalSubmit}
+              >
+                <Text style={styles.buttonText}>OK</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
-      </ScrollView>
+      </Modal>
+
       <CustomFooter />
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
-// ... (stílusok változatlanok)
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#efeff6",
-  },
-  scrollContainer: {
-    flexGrow: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingVertical: 50,
-    paddingHorizontal: 20,
-  },
-  form: {
-    width: "100%",
-    maxWidth: 400,
-    backgroundColor: "transparent",
-  },
-  heading: {
-    fontSize: 28,
-    fontWeight: "700",
-    marginBottom: 20,
-    color: "#1a1a1a",
-    textAlign: "center",
-  },
-  switchRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 20,
-    gap: 10,
-  },
-  switchLabel: {
-    fontSize: 16,
-    color: "#666",
-    fontWeight: "500",
-  },
-  input: {
-    height: 55,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    fontSize: 16,
-    marginBottom: 16,
-    backgroundColor: "#fff",
-    color: "#000",
-    borderWidth: 1,
-    borderColor: "#ddd",
-  },
-  adminInput: {
-    borderColor: "#34C759",
-    borderWidth: 1.5,
-  },
-  button: {
-    height: 55,
-    alignItems: "center",
-    justifyContent: "center",
-    elevation: 3,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  disabledButton: {
-    opacity: 0.6,
-  },
-  buttonText: {
-    color: "#fff",
-    fontSize: 17,
-    fontWeight: "600",
-  },
-  errorText: {
-    color: "#ff3b30",
-    textAlign: "center",
-    marginBottom: 15,
-    fontSize: 14,
-    fontWeight: "500",
-  },
-  link: {
-    marginTop: 20,
-    alignItems: "center",
-  },
-  linkText: {
-    color: "#666",
-    fontSize: 15,
-  },
-  bold: {
-    color: "#007AFF",
-    fontWeight: "700",
-  },
+  container: { flex: 1, justifyContent: "center", alignItems: "center", paddingVertical: 50, paddingHorizontal: 20 },
+  form: { width: "100%", maxWidth: 400 },
+  heading: { fontSize: 28, fontWeight: "700", marginBottom: 30, color: "#1a1a1a", textAlign: "center" },
+  input: { height: 55, borderRadius: 12, paddingHorizontal: 16, fontSize: 16, marginBottom: 16, backgroundColor: "#fff", color: "#000", borderWidth: 1, borderColor: "#ddd" },
+  adminInput: { borderColor: "#34C759", borderWidth: 2 },
+  button: { height: 55, alignItems: "center", justifyContent: "center", borderRadius: 12, elevation: 3 },
+  buttonText: { color: "#fff", fontSize: 18, fontWeight: "700" },
+  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", alignItems: "center" },
+  modalContent: { width: "85%", maxWidth: 350, backgroundColor: "#fff", borderRadius: 24, padding: 25, alignItems: "center" },
+  modalTitle: { fontSize: 20, fontWeight: "bold", marginBottom: 5 },
+  modalSubText: { fontSize: 14, color: "#666", textAlign: "center", marginBottom: 20 }
 });

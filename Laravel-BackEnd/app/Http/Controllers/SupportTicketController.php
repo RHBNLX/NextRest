@@ -26,7 +26,7 @@ class SupportTicketController extends Controller
     }
     public function index()
     {
-        $support_tickets = SupportTicket::all();
+        $support_tickets = SupportTicket::with('user', 'order', 'chatMessages')->orderBy('created_at', 'desc')->get();
         return response()->json($support_tickets, 200, options: JSON_UNESCAPED_UNICODE);
     }
     public function store(Request $request)
@@ -56,7 +56,28 @@ class SupportTicketController extends Controller
     }
     public function update(Request $request, string $id)
     {
-        //
+        $ticket = SupportTicket::find($id);
+        
+        if (!$ticket) {
+            return response()->json(['uzenet' => 'Nincs ilyen azonosítóval support jegy!'], 404, options: JSON_UNESCAPED_UNICODE);
+        }
+        
+        $request->validate([
+            'status' => 'sometimes|string|max:255',
+            'subject' => 'sometimes|string|max:255',
+            'message' => 'sometimes|string',
+        ], [
+            'required' => 'A(z) :attribute mező kötelező.',
+            'string' => 'A :attribute mezőnek szövegesnek kell lennie.',
+            'max' => 'A :attribute mező nem lehet hosszabb, mint :max karakter.',
+        ]);
+        
+        $ticket->update($request->only(['status', 'subject', 'message']));
+        
+        return response()->json([
+            'uzenet' => 'Support jegy sikeresen frissítve!',
+            'ticket' => $ticket
+        ], 200, options: JSON_UNESCAPED_UNICODE);
     }
     public function destroy(string $id)
     {

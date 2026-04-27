@@ -1,8 +1,10 @@
 import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { usePageTitle } from "../hooks";
 import CustomFooter from "./components/footer";
 import CustomNavbar from "./components/navbar";
 
 export default function FAQ() {
+  usePageTitle("GYIK");
   return (
     <View style={styles.container}>
       <CustomNavbar title="GYIK" />
@@ -14,21 +16,26 @@ export default function FAQ() {
           <Text style={styles.question}>Hogyan küldhetek csomagot?</Text>
           <Text style={styles.answer}>
             Egyszerűen hozz létre egy fiókot, válaszd a „Csomagküldés” opciót,
-            add meg a felvételi és szállítási adatokat, majd igazold vissza a kérést.
+            add meg a felvételi és szállítási adatokat, majd igazold vissza a
+            kérést.
           </Text>
         </View>
 
         <View style={styles.faqItem}>
-          <Text style={styles.question}>Hogyan követhetem nyomon a szállítást?</Text>
+          <Text style={styles.question}>
+            Hogyan követhetem nyomon a szállítást?
+          </Text>
           <Text style={styles.answer}>
-            Minden csomag rendelkezik egy követési azonosítóval (ID). A szállítmányodat
-            a „Csomagkövetés” menüpont alatt ellenőrizheted.
+            Minden csomag rendelkezik egy követési azonosítóval (ID). A
+            szállítmányodat a „Csomagkövetés” menüpont alatt ellenőrizheted.
           </Text>
         </View>
 
         <View style={styles.faqItem}>
           <Text style={styles.question}>Biztosítva van a csomagom?</Text>
-          <Text style={styles.answer}>Nem. Nem egy biztosítótársaság vagyunk.</Text>
+          <Text style={styles.answer}>
+            Nem. Nem egy biztosítótársaság vagyunk.
+          </Text>
         </View>
 
         <View style={styles.faqItem}>
@@ -47,8 +54,8 @@ export default function FAQ() {
         <View style={styles.faqItem}>
           <Text style={styles.question}>Kihez fordulhatok segítségért?</Text>
           <Text style={styles.answer}>
-            Ügyfélszolgálatunkat a kapcsolat oldalon keresztül érheted el
-            egy hibajegy (ticket) beküldésével.
+            Ügyfélszolgálatunkat a kapcsolat oldalon keresztül érheted el egy
+            hibajegy (ticket) beküldésével.
           </Text>
         </View>
       </ScrollView>

@@ -11,7 +11,7 @@ class CourierController extends Controller
 {
     public function index()
     {
-        $couriers = Courier::all();
+        $couriers = Courier::with('user')->get();
         return response()->json($couriers, 200, options: JSON_UNESCAPED_UNICODE);
     }
 
@@ -45,6 +45,34 @@ class CourierController extends Controller
             'license_plate' => $request->license_plate,
         ]);
         return response()->json(['uzenet' => 'Sikeres futár lett a rendszerhez adva!'], 201, options: JSON_UNESCAPED_UNICODE);
+    }
+
+    public function update(Request $request, string $id)
+    {
+        $courier = Courier::find($id);
+
+        if (!$courier) {
+            return response()->json(['uzenet' => 'Nincs ilyen azonosítóval futár!'], 404, options: JSON_UNESCAPED_UNICODE);
+        }
+
+        $validStatuses = array_map(fn($case) => $case->value, CourierStatus::cases());
+
+        $request->validate([
+            'status' => ['sometimes', 'in:' . implode(',', $validStatuses)],
+            'vehicle_type' => ['sometimes', 'in:car,bike,scooter,van'],
+            'license_plate' => 'sometimes|string|max:255',
+        ], [
+            "in" => "A :attribute mezőnek érvényes értéknek kell lennie.",
+            "string" => "A :attribute mezőnek szövegesnek kell lennie.",
+            "max" => "A :attribute mező nem lehet hosszabb, mint :max karakter.",
+        ]);
+
+        $courier->update($request->only(['status', 'vehicle_type', 'license_plate']));
+
+        return response()->json([
+            'uzenet' => 'Futár sikeresen frissítve!',
+            'courier' => $courier
+        ], 200, options: JSON_UNESCAPED_UNICODE);
     }
 
     public function destroy(string $id)

@@ -11,6 +11,7 @@ import {
   View,
 } from "react-native";
 import { useAuth } from "../context/AuthContext";
+import { usePageTitle } from "../hooks";
 import CustomFooter from "./components/footer";
 import CustomNavbar from "./components/navbar";
 
@@ -80,6 +81,7 @@ export default function Index() {
   const isMobile = width < 768;
 
   const { isLoggedIn, user } = useAuth();
+  usePageTitle("Főoldal");
 
   const titleFontSize = isMobile ? 45 : 100;
   const bodySize = isMobile ? 16 : 17;

@@ -16,18 +16,21 @@ import { useRouter } from "expo-router";
 import AntDesign from "@expo/vector-icons/AntDesign";
 import * as ImagePicker from "expo-image-picker";
 import { useAuth } from "../../context/AuthContext";
+import { usePageTitle, useProtectedRoute } from "../../hooks";
 import axiosInstance from "../../api/axiosInstance";
 
 import CustomNavbar from "../components/navbar";
 import CustomFooter from "../components/footer";
 
 const showAlert = (title: string, message: string) => {
-  if (typeof window !== 'undefined') {
+  if (typeof window !== "undefined") {
     window.alert(`${title}\n${message}`);
   }
 };
 
 export default function SettingsScreen() {
+  usePageTitle("Beállítások");
+  useProtectedRoute(["customer"]);
   const router = useRouter();
   const { width } = useWindowDimensions();
   const { user: authUser, logout } = useAuth();

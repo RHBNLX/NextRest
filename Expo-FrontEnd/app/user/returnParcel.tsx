@@ -10,241 +10,262 @@ import {
   Platform,
   Modal,
   StyleSheet,
+  FlatList,
 } from "react-native";
 import { AntDesign } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useAuth } from "../../context/AuthContext";
+import { usePageTitle, useProtectedRoute } from "../../hooks";
 import axiosInstance from "../../api/axiosInstance";
 
 import CustomNavbar from "../components/navbar";
 import CustomFooter from "../components/footer";
 
-const showAlert = (title: string, message: string, options?: { text: string; onPress?: () => void }[]) => {
-  if (typeof window !== 'undefined') {
+const showAlert = (title: string, message: string) => {
+  if (typeof window !== "undefined") {
     window.alert(`${title}\n${message}`);
-    if (options && options.length > 0 && options[0].onPress) {
-      options[0].onPress();
-    }
   }
 };
 
-export default function SendParcelScreen() {
+const REASONS = [
+  { id: "damaged", label: "Sérült termék", icon: " Faster" },
+  { id: "wrong_item", label: "Hibás termék érkezett", icon: "closecircleo" },
+  { id: "not_satisfied", label: "Nem felel meg a leírásnak", icon: "dislike2" },
+  { id: "other", label: "Egyéb ok", icon: "questioncircleo" },
+];
+
+export default function ReturnParcelScreen() {
+  usePageTitle("Csomag visszaküldése");
+  useProtectedRoute(["customer"]);
   const router = useRouter();
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
-  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [orders, setOrders] = useState<any[]>([]);
+
+  const [showOrderSelect, setShowOrderSelect] = useState(false);
+  const [showReasonSelect, setShowReasonSelect] = useState(false);
 
   const [formData, setFormData] = useState({
     user_id: "",
     order_id: "",
+    pickup_address: "",
+    dropoff_address: "",
+    receiver_name: "",
+    receiver_phone: "",
     reason: "damaged",
+    reasonLabel: "Sérült termék",
     description: "",
-    image_url: "",
-    status: "pending",
   });
 
   useEffect(() => {
     if (user) {
-      setFormData((prev) => ({
-        ...prev,
-        user_id: user.id.toString(),
-      }));
+      setFormData((prev) => ({ ...prev, user_id: user.id.toString() }));
+      fetchOrders();
     }
   }, [user]);
 
-  const validateAndConfirm = () => {
-    if (!formData.order_id || !formData.description) {
-      showAlert("Hiba", "Kérlek töltsd ki a kötelező (*) mezőket!");
-      return;
+  const fetchOrders = async () => {
+    setOrdersLoading(true);
+    try {
+      const response = await axiosInstance.get(`/orders/user/${user?.id}`);
+      setOrders(Array.isArray(response.data) ? response.data : []);
+    } catch (error) {
+      console.error("Hiba:", error);
+    } finally {
+      setOrdersLoading(false);
     }
-    setShowConfirmModal(true);
+  };
+
+  const parseNotes = (notes: string) => {
+    if (!notes) return { name: "Nincs megadva", phone: "" };
+    const nameMatch = notes.match(/Címzett:\s*([^|]+)/);
+    const phoneMatch = notes.match(/Tel:\s*(.+)/);
+    return {
+      name: nameMatch ? nameMatch[1].trim() : "Nincs megadva",
+      phone: phoneMatch ? phoneMatch[1].trim() : "",
+    };
+  };
+
+  const handleSelectOrder = (order: any) => {
+    const { name, phone } = parseNotes(order.notes);
+    setFormData((prev) => ({
+      ...prev,
+      order_id: order.id.toString(),
+      pickup_address: order.dropoff_address,
+      dropoff_address: order.pickup_address,
+      receiver_name: name,
+      receiver_phone: phone,
+    }));
+    setShowOrderSelect(false);
+  };
+
+  const handleSelectReason = (item: (typeof REASONS)[0]) => {
+    setFormData((prev) => ({
+      ...prev,
+      reason: item.id,
+      reasonLabel: item.label,
+    }));
+    setShowReasonSelect(false);
   };
 
   const handleFinalSubmit = async () => {
-    setShowConfirmModal(false);
+    if (!formData.order_id) return;
     setLoading(true);
-
     try {
-      const payload = {
+      await axiosInstance.post("/support_tickets", {
         user_id: Number(formData.user_id),
         order_id: Number(formData.order_id),
-        reason: formData.reason,
-        description: formData.description,
-        image_url: formData.image_url || "",
-        status: formData.status,
-      };
-
-      await axiosInstance.post("/returns", payload);
-
-      showAlert("Siker", "Csomagküldés sikeresen rögzítve!", [
-        { text: "Dashboard", onPress: () => router.push("/user/dashboard") },
-      ]);
-    } catch (error: any) {
-      let errorMsg =
-        error.response?.data?.message || "Hiba történt a mentés során.";
-      if (error.response?.data?.errors) {
-        errorMsg = Object.values(error.response.data.errors).flat().join("\n");
-      }
-      showAlert("Backend hiba", errorMsg);
+        subject: "Csomag visszaküldés",
+        message: `Visszaküldési igény (#${formData.order_id})\nIndok: ${formData.reasonLabel}\nMegjegyzés: ${formData.description}`,
+        status: "open",
+      });
+      showAlert("Siker", "Visszaküldési igény elküldve!");
+      router.push("/user/dashboard");
+    } catch (error) {
+      showAlert("Hiba", "Nem sikerült a küldés.");
     } finally {
       setLoading(false);
     }
   };
+
+  const selectedOrder = orders.find(
+    (o) => o.id.toString() === formData.order_id,
+  );
 
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       style={styles.container}
     >
-      <CustomNavbar title="Csomagküldés" />
+      <CustomNavbar title="Visszaküldés" />
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Útvonal adatai</Text>
-
-          <Text style={styles.label}>Felvételi cím *</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Honnan vigyük el?"
-            value={formData.pickup_address}
-            onChangeText={(t) =>
-              setFormData({ ...formData, pickup_address: t })
-            }
-          />
-
-          <Text style={styles.label}>Kézbesítési cím *</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Hová szállítsuk?"
-            value={formData.dropoff_address}
-            onChangeText={(t) =>
-              setFormData({ ...formData, dropoff_address: t })
-            }
-          />
-
-          <View style={styles.divider} />
-
-          <Text style={styles.sectionTitle}>Csomag adatai</Text>
-
-          <Text style={styles.label}>Címzett neve *</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Címzett teljes neve"
-            value={formData.receiver_name}
-            onChangeText={(t) => setFormData({ ...formData, receiver_name: t })}
-          />
-
-          <View style={styles.row}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.label}>Csomag mérete</Text>
-              <View style={styles.sizePicker}>
-                {["S", "M", "L"].map((s) => (
-                  <TouchableOpacity
-                    key={s}
-                    style={[
-                      styles.sizeBtn,
-                      formData.package_size === s && styles.sizeBtnActive,
-                    ]}
-                    onPress={() => handleSizeChange(s)}
-                  >
-                    <Text
-                      style={[
-                        styles.sizeText,
-                        formData.package_size === s && styles.sizeTextActive,
-                      ]}
-                    >
-                      {s}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-          </View>
-
-          <Text style={styles.label}>Telefon</Text>
-          <TextInput
-            style={[styles.input, { height: 60, textAlignVertical: "top" }]}
-            placeholder="+36 12 345 6789"
-            value={formData.receiver_phone}
-            onChangeText={(t) =>
-              setFormData({ ...formData, receiver_phone: t })
-            }
-          />
-
-          <Text style={styles.label}>Megjegyzés</Text>
-          <TextInput
-            style={[styles.input, { height: 60, textAlignVertical: "top" }]}
-            multiline
-            placeholder="Pl. kapukód, törékeny áru..."
-            value={formData.description}
-            onChangeText={(t) => setFormData({ ...formData, description: t })}
-          />
-
-          <View style={styles.buttonContainer}>
-            <TouchableOpacity
-              style={styles.cancelBtn}
-              onPress={() => router.push("/user/dashboard")}
+          <Text style={styles.label}>Melyik csomagot küldöd vissza? *</Text>
+          <TouchableOpacity
+            style={styles.selectBox}
+            onPress={() => setShowOrderSelect(true)}
+          >
+            <Text
+              style={[styles.selectText, !selectedOrder && { color: "#999" }]}
+              numberOfLines={1}
             >
-              <Text style={styles.cancelText}>Mégse</Text>
-            </TouchableOpacity>
+              {selectedOrder
+                ? `${parseNotes(selectedOrder.notes).name} - ${selectedOrder.dropoff_address}`
+                : "Válassz ki egy rendelést..."}
+            </Text>
+            <AntDesign name="down" size={14} color="#666" />
+          </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.submitBtn}
-              onPress={validateAndConfirm}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.submitText}>
-                  Küldés ({formData.price} Ft)
+          <Text style={styles.label}>Visszaküldés oka *</Text>
+          <TouchableOpacity
+            style={styles.selectBox}
+            onPress={() => setShowReasonSelect(true)}
+          >
+            <Text style={styles.selectText}>{formData.reasonLabel}</Text>
+            <AntDesign name="down" size={14} color="#666" />
+          </TouchableOpacity>
+
+          {selectedOrder && (
+            <View style={styles.autoFields}>
+              <Text style={styles.infoTitle}>Adatok ellenőrzése:</Text>
+              <Text style={styles.infoSub}>
+                Címzett:{" "}
+                <Text style={{ fontWeight: "700" }}>
+                  {formData.receiver_name}
                 </Text>
-              )}
-            </TouchableOpacity>
-          </View>
+              </Text>
+              <Text style={styles.infoSub}>
+                Felvétel helye:{" "}
+                <Text style={{ fontWeight: "700" }}>
+                  {formData.pickup_address}
+                </Text>
+              </Text>
+
+              <Text style={styles.label}>Megjegyzés (opcionális)</Text>
+              <TextInput
+                style={styles.textArea}
+                multiline
+                placeholder="További részletek..."
+                value={formData.description}
+                onChangeText={(t) =>
+                  setFormData({ ...formData, description: t })
+                }
+              />
+
+              <TouchableOpacity
+                style={styles.submitBtn}
+                onPress={handleFinalSubmit}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.submitBtnText}>
+                    Visszaküldés beküldése
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
       </ScrollView>
 
-      <Modal visible={showConfirmModal} transparent animationType="fade">
+      <Modal visible={showOrderSelect} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <AntDesign name="check-circle" size={45} color="#007AFF" />
-            <Text style={styles.modalTitle}>Rendelés összegzése</Text>
-
-            <View style={styles.priceBadge}>
-              <Text style={styles.priceBadge}>
-                Fizetendő összeg{"\n"}
-                {"\n"}
-                <Text style={styles.priceValue}>{formData.price} Ft</Text>
-              </Text>
-            </View>
-
-            <Text style={styles.modalText}>
-              Választott méret:{" "}
-              {formData.package_size === "S"
-                ? "Kicsi"
-                : formData.package_size === "M"
-                  ? "Közepes"
-                  : "Nagy"}
-            </Text>
-            <Text style={{ fontSize: 11, color: "#999", marginBottom: 20 }}>
-              Hozzárendelt futár: #{formData.courier_id}
-            </Text>
-
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={styles.modalCancel}
-                onPress={() => setShowConfirmModal(false)}
-              >
-                <Text style={styles.modalCancelText}>Módosítás</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.modalConfirm}
-                onPress={handleFinalSubmit}
-              >
-                <Text style={styles.modalConfirmText}>Küldés</Text>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Rendeléseid</Text>
+              <TouchableOpacity onPress={() => setShowOrderSelect(false)}>
+                <AntDesign name="close" size={24} color="#333" />
               </TouchableOpacity>
             </View>
+            <FlatList
+              data={orders}
+              keyExtractor={(item) => item.id.toString()}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.listItem}
+                  onPress={() => handleSelectOrder(item)}
+                >
+                  <Text style={styles.listItemTitle}>
+                    {parseNotes(item.notes).name}
+                  </Text>
+                  <Text style={styles.listItemSub}>{item.dropoff_address}</Text>
+                </TouchableOpacity>
+              )}
+            />
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={showReasonSelect} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View
+            style={[styles.modalContent, { height: "auto", paddingBottom: 40 }]}
+          >
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Mi az indok?</Text>
+              <TouchableOpacity onPress={() => setShowReasonSelect(false)}>
+                <AntDesign name="close" size={24} color="#333" />
+              </TouchableOpacity>
+            </View>
+            {REASONS.map((item) => (
+              <TouchableOpacity
+                key={item.id}
+                style={styles.listItem}
+                onPress={() => handleSelectReason(item)}
+              >
+                <AntDesign
+                  name={item.icon as any}
+                  size={18}
+                  color="#007AFF"
+                  style={{ marginRight: 15 }}
+                />
+                <Text style={styles.listItemTitle}>{item.label}</Text>
+              </TouchableOpacity>
+            ))}
           </View>
         </View>
       </Modal>
@@ -255,129 +276,93 @@ export default function SendParcelScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#efeff6" },
-  scrollContent: {
-    paddingVertical: 20,
-    paddingHorizontal: 15,
-    alignItems: "center",
-  },
+  container: { flex: 1, backgroundColor: "#f8f9fa" },
+  scrollContent: { padding: 20, alignItems: "center" },
   card: {
     backgroundColor: "#fff",
     width: "100%",
     maxWidth: 500,
-    borderRadius: 20,
+    borderRadius: 25,
     padding: 20,
-    elevation: 4,
-    shadowColor: "#000",
     shadowOpacity: 0.1,
-    shadowRadius: 8,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "800",
-    color: "#333",
-    marginBottom: 10,
-    marginTop: 10,
+    elevation: 4,
   },
   label: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#777",
-    marginBottom: 5,
-    marginTop: 10,
+    color: "#636e72",
+    marginBottom: 8,
+    marginTop: 15,
+    textTransform: "uppercase",
   },
-  input: {
-    backgroundColor: "#fdfdfd",
-    borderWidth: 1,
-    borderColor: "#eee",
-    borderRadius: 10,
-    padding: 12,
-    fontSize: 15,
-  },
-  divider: { height: 1, backgroundColor: "#f0f0f0", marginVertical: 20 },
-  row: { flexDirection: "row", marginTop: 5 },
-  sizePicker: { flexDirection: "row", gap: 8, marginTop: 5 },
-  sizeBtn: {
-    flex: 1,
-    height: 45,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "#ddd",
+  selectBox: {
+    flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
-    justifyContent: "center",
+    backgroundColor: "#f1f2f6",
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#dfe6e9",
   },
-  sizeBtnActive: { backgroundColor: "#007AFF", borderColor: "#007AFF" },
-  sizeText: { fontWeight: "bold", color: "#666" },
-  sizeTextActive: { color: "#fff" },
-  buttonContainer: { flexDirection: "row", gap: 12, marginTop: 25 },
+  selectText: { fontSize: 15, color: "#2d3436" },
+  autoFields: {
+    marginTop: 25,
+    borderTopWidth: 1,
+    borderTopColor: "#f1f2f6",
+    paddingTop: 20,
+  },
+  infoTitle: {
+    fontSize: 14,
+    fontWeight: "bold",
+    color: "#333",
+    marginBottom: 10,
+  },
+  infoSub: { fontSize: 14, color: "#666", marginBottom: 5 },
+  textArea: {
+    backgroundColor: "#f9f9f9",
+    borderWidth: 1,
+    borderColor: "#dfe6e9",
+    borderRadius: 12,
+    padding: 15,
+    height: 100,
+    textAlignVertical: "top",
+    marginTop: 5,
+  },
   submitBtn: {
-    flex: 2,
     backgroundColor: "#007AFF",
-    padding: 15,
-    borderRadius: 12,
+    padding: 18,
+    borderRadius: 15,
     alignItems: "center",
-    justifyContent: "center",
+    marginTop: 25,
   },
-  submitText: { color: "#fff", fontSize: 16, fontWeight: "bold" },
-  cancelBtn: {
-    flex: 1,
-    padding: 15,
-    borderRadius: 12,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#ddd",
-  },
-  cancelText: { color: "#888", fontWeight: "600" },
+  submitBtnText: { color: "#fff", fontWeight: "bold", fontSize: 16 },
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.6)",
-    justifyContent: "center",
-    padding: 15,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "flex-end",
   },
   modalContent: {
     backgroundColor: "#fff",
-    borderRadius: 20,
-    padding: 25,
-    alignItems: "center",
-    maxWidth: 450,
-    alignSelf: "center",
+    borderTopLeftRadius: 25,
+    borderTopRightRadius: 25,
+    height: "60%",
+    padding: 20,
   },
-  modalTitle: { fontSize: 20, fontWeight: "bold", marginBottom: 15 },
-  modalText: { fontSize: 16, marginBottom: 10 },
-  modalSubText: {
-    fontSize: 12,
-    color: "#999",
-    textAlign: "center",
-    marginTop: 10,
-  },
-  priceBadge: {
-    backgroundColor: "#eef6ff",
-    padding: 15,
-    borderRadius: 15,
-    marginVertical: 15,
-  },
-  priceValue: {
-    fontSize: 28,
-    fontWeight: "900",
-    color: "#007AFF",
-    textAlign: "center",
-  },
-  modalButtons: { flexDirection: "row", gap: 10, marginTop: 20, width: "100%" },
-  modalCancel: {
-    flex: 1,
-    padding: 12,
-    alignItems: "center",
-    borderColor: "#BBB",
-    borderWidth: 1,
-    borderRadius: 15,
-  },
-  modalCancelText: { color: "#aaa", marginHorizontal: 50 },
-  modalConfirm: {
-    flex: 2,
-    backgroundColor: "#007AFF",
-    padding: 12,
-    borderRadius: 10,
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 20,
     alignItems: "center",
   },
-  modalConfirmText: { color: "#fff", fontWeight: "bold" },
+  modalTitle: { fontSize: 20, fontWeight: "bold" },
+  listItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 18,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f1f2f6",
+  },
+  listItemTitle: { fontSize: 16, fontWeight: "600", color: "#2d3436" },
+  listItemSub: { fontSize: 13, color: "#636e72", marginTop: 2 },
 });

@@ -13,8 +13,8 @@ class OrderController extends Controller
 {
     public function index()
     {
-        $orders = Order::all();
-        return response()->json($orders, 200, options: JSON_UNESCAPED_UNICODE);
+        $orders = Order::with(['user', 'courier.user'])->get();
+        return response()->json($orders);
     }
 
     public function getUserOrders($id)
@@ -64,7 +64,27 @@ class OrderController extends Controller
     }
     public function update(Request $request, string $id)
     {
-        //
+        $order = Order::find($id);
+
+        if (!$order) {
+            return response()->json(['message' => 'Rendelés nem található'], 404);
+        }
+
+        $validated = $request->validate([
+            'status' => ['sometimes', Rule::enum(OrderStatus::class)],
+            'courier_id' => 'sometimes|integer|exists:couriers,id',
+            'notes' => 'sometimes|string|max:255',
+        ], [
+            'enum' => 'A(z) :attribute mező értéke érvénytelen.',
+            'exists' => 'A megadott :attribute nem létezik az adatbázisban.',
+        ]);
+
+        $order->update($validated);
+
+        return response()->json([
+            'message' => 'Rendelés sikeresen frissítve!',
+            'order' => $order
+        ], 200, [], JSON_UNESCAPED_UNICODE);
     }
     public function destroy(string $id)
     {

@@ -27,27 +27,43 @@ export default function CustomNavbar({ title }: NavbarProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
 
-  // ADMIN ELLENŐRZÉS ÉS DINAMIKUS SZÍN
-  const isAdmin = isLoggedIn && (user as any)?.role === 'admin';
+  const isAdmin = isLoggedIn && (user as any)?.role === "admin";
   const activeColor = isAdmin ? "#34C759" : "#007Aff";
 
-  // DINAMIKUS NAVLINKEK
-  const menuItems = isAdmin 
+  const menuItems = isAdmin
     ? [
         { id: "Vezérlőpult", label: "Vezérlőpult", href: "/mgmt/dashboard" },
         { id: "Futárok", label: "Futárok", href: "/mgmt/couriers" },
         { id: "Felhasználók", label: "Felhasználók", href: "/mgmt/users" },
-        { id: "Csomagok", label: "Csomagok", href: "/mgmt/packages" },
-        { id: "Support jegyek", label: "Support jegyek", href: "/mgmt/tickets" },
+        { id: "Rendelések", label: "Rendelések", href: "/mgmt/orders" },
+        {
+          id: "Support jegyek",
+          label: "Support jegyek",
+          href: "/mgmt/tickets",
+        },
       ]
     : [
         { id: "Főoldal", label: "Főoldal", href: "/" },
         { id: "Support", label: "Support", href: "/support" },
         ...(isLoggedIn
-          ? [{ id: "Vezérlőpult", label: "Vezérlőpult", href: "/user/dashboard" }]
+          ? [
+              {
+                id: "Vezérlőpult",
+                label: "Vezérlőpult",
+                href: "/user/dashboard",
+              },
+            ]
           : [
-              { id: "Regisztráció", label: "Regisztráció", href: "/auth/register" },
-              { id: "Bejelentkezés", label: "Bejelentkezés", href: "/auth/login" },
+              {
+                id: "Regisztráció",
+                label: "Regisztráció",
+                href: "/auth/register",
+              },
+              {
+                id: "Bejelentkezés",
+                label: "Bejelentkezés",
+                href: "/auth/login",
+              },
             ]),
       ];
 
@@ -59,7 +75,6 @@ export default function CustomNavbar({ title }: NavbarProps) {
   return (
     <SafeAreaView edges={["top"]} style={styles.safeArea}>
       <View style={styles.container}>
-        {/* Logo színét az activeColor határozza meg */}
         <Text style={[styles.title, { color: activeColor }]}>{title}</Text>
 
         <View style={styles.navSection}>
@@ -73,7 +88,10 @@ export default function CustomNavbar({ title }: NavbarProps) {
                   <Text
                     style={[
                       styles.link,
-                      pathname === item.href && { color: activeColor, fontWeight: "700" },
+                      pathname === item.href && {
+                        color: activeColor,
+                        fontWeight: "700",
+                      },
                     ]}
                   >
                     {item.label}
@@ -87,7 +105,10 @@ export default function CustomNavbar({ title }: NavbarProps) {
             {user ? (
               <View>
                 <TouchableOpacity
-                  style={[styles.profileTrigger, isAdmin && { backgroundColor: "#f0fff4" }]}
+                  style={[
+                    styles.profileTrigger,
+                    isAdmin && { backgroundColor: "#f0fff4" },
+                  ]}
                   onPress={() => setUserMenuOpen(!userMenuOpen)}
                 >
                   {user.avatar_url ? (
@@ -111,7 +132,9 @@ export default function CustomNavbar({ title }: NavbarProps) {
                       </Text>
                     </View>
                   )}
-                  <Text style={[styles.userName, { color: activeColor }]}>{user.name} </Text>
+                  <Text style={[styles.userName, { color: activeColor }]}>
+                    {user.name}{" "}
+                  </Text>
                   <AntDesign
                     name={userMenuOpen ? "up" : "down"}
                     size={12}
@@ -119,9 +142,15 @@ export default function CustomNavbar({ title }: NavbarProps) {
                   />
                 </TouchableOpacity>
 
-                {/* MODAL a kívülre kattintás becsukásához */}
-                <Modal transparent visible={userMenuOpen} animationType="none" onRequestClose={() => setUserMenuOpen(false)}>
-                  <TouchableWithoutFeedback onPress={() => setUserMenuOpen(false)}>
+                <Modal
+                  transparent
+                  visible={userMenuOpen}
+                  animationType="none"
+                  onRequestClose={() => setUserMenuOpen(false)}
+                >
+                  <TouchableWithoutFeedback
+                    onPress={() => setUserMenuOpen(false)}
+                  >
                     <View style={styles.modalOverlay}>
                       <View style={[styles.dropdown, { top: 60, right: 15 }]}>
                         {isMobile &&
@@ -137,7 +166,10 @@ export default function CustomNavbar({ title }: NavbarProps) {
                               <Text
                                 style={[
                                   styles.dropdownText,
-                                  pathname === item.href && { color: activeColor, fontWeight: "700" },
+                                  pathname === item.href && {
+                                    color: activeColor,
+                                    fontWeight: "700",
+                                  },
                                 ]}
                               >
                                 {item.label}
@@ -165,7 +197,9 @@ export default function CustomNavbar({ title }: NavbarProps) {
                           onPress={handleLogout}
                         >
                           <AntDesign name="logout" size={16} color="#ff3b30" />
-                          <Text style={[styles.dropdownText, { color: "#ff3b30" }]}>
+                          <Text
+                            style={[styles.dropdownText, { color: "#ff3b30" }]}
+                          >
                             Kijelentkezés
                           </Text>
                         </TouchableOpacity>

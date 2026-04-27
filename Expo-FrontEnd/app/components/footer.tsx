@@ -11,10 +11,16 @@ export default function Footer() {
       <TouchableOpacity onPress={() => router.push("/faq")} activeOpacity={0.7}>
         <Text style={styles.link}>GYIK</Text>
       </TouchableOpacity>
-      <TouchableOpacity onPress={() => router.push("/cookie-policy")} activeOpacity={0.7}>
+      <TouchableOpacity
+        onPress={() => router.push("/cookie-policy")}
+        activeOpacity={0.7}
+      >
         <Text style={styles.link}>Süti Tájékoztató</Text>
       </TouchableOpacity>
-      <TouchableOpacity onPress={() => router.push("/noticeBoard")} activeOpacity={0.7}>
+      <TouchableOpacity
+        onPress={() => router.push("/noticeBoard")}
+        activeOpacity={0.7}
+      >
         <Text style={styles.link}>Felhívások</Text>
       </TouchableOpacity>
     </View>

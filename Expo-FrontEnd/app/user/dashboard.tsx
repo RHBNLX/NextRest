@@ -2,6 +2,7 @@ import AntDesign from "@expo/vector-icons/AntDesign";
 import { useEffect, useState } from "react";
 import { useRouter } from "expo-router";
 import { useAuth } from "../../context/AuthContext";
+import { usePageTitle, useProtectedRoute } from "../../hooks";
 import axiosInstance from "../../api/axiosInstance";
 import {
   ActivityIndicator,
@@ -27,13 +28,15 @@ type Order = {
 };
 
 export default function Dashboard() {
+  usePageTitle("Vezérlőpult");
+  useProtectedRoute(["customer"]);
   const { width } = useWindowDimensions();
   const isMobile = width < 768;
   const router = useRouter();
-  const { user } = useAuth();
   const [expandedParcelId, setExpandedParcelId] = useState<number | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const { user, logout } = useAuth();
 
   const fetchOrders = async () => {
     if (!user?.id) return;
@@ -184,7 +187,16 @@ export default function Dashboard() {
               </TouchableOpacity>
               <TouchableOpacity style={styles.navLink}>
                 <AntDesign name="logout" size={18} color="#FF3B30" />
-                <Text style={[styles.navLinkText, { color: "#FF3B30" }]}>
+                <Text
+                  style={[styles.navLinkText, { color: "#FF3B30" }]}
+                  onPress={async () => {
+                    try {
+                      await logout();
+                    } catch (err) {
+                      console.error("Kijelentkezési hiba:", err);
+                    }
+                  }}
+                >
                   Kijelentkezés
                 </Text>
               </TouchableOpacity>

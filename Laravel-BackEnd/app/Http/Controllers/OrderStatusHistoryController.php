@@ -44,10 +44,6 @@ class OrderStatusHistoryController extends Controller
         ]);
         return response()->json(['uzenet' => 'Sikeresen változott a rendelés állapota!'], 201, options: JSON_UNESCAPED_UNICODE);
     }
-    public function update(Request $request, string $id)
-    {
-        //
-    }
     public function destroy(string $id)
     {
         $order_status_history = OrderStatusHistory::find($id);

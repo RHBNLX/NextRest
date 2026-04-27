@@ -11,12 +11,14 @@ import {
   Platform,
 } from "react-native";
 import { useRouter } from "expo-router";
+import { usePageTitle } from "../../hooks";
 import axiosInstance from "../../api/axiosInstance";
 
 import CustomFooter from "../components/footer";
 import CustomNavbar from "../components/navbar";
 
 export default function RegisterScreen() {
+  usePageTitle("Regisztráció");
   const router = useRouter();
 
   const [name, setName] = useState("");

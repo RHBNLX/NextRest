@@ -10,9 +10,19 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useAuth } from "../context/AuthContext";
+import { usePageTitle } from "../hooks";
 import axiosInstance from "../api/axiosInstance";
 import CustomFooter from "./components/footer";
 import CustomNavbar from "./components/navbar";
+
+const statusMap: Record<string, string> = {
+  open: "Nyitott",
+  nyitott: "Nyitott",
+  closed: "Lezárt",
+  lezárt: "Lezárt",
+  in_progress: "Folyamatban",
+  resolved: "Megoldva",
+};
 
 interface Order {
   id: number;
@@ -44,6 +54,7 @@ const showAlert = (title: string, message: string) => {
 };
 
 export default function SupportScreen() {
+  usePageTitle("Support");
   const { width } = useWindowDimensions();
   const isMobile = width < 768;
   const scrollViewRef = useRef<ScrollView>(null);
@@ -64,17 +75,24 @@ export default function SupportScreen() {
   const [isLoadingOrders, setIsLoadingOrders] = useState(false);
 
   useEffect(() => {
+    let interval: any;
+    if (selectedTicketId && isLoggedIn) {
+      fetchChatMessages(selectedTicketId, true);
+      interval = setInterval(() => {
+        fetchChatMessages(selectedTicketId, false);
+      }, 4000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [selectedTicketId, isLoggedIn]);
+
+  useEffect(() => {
     if (isLoggedIn) {
       fetchTickets();
       fetchOrders();
     }
   }, [isLoggedIn]);
-
-  useEffect(() => {
-    if (selectedTicketId) {
-      fetchChatMessages(selectedTicketId);
-    }
-  }, [selectedTicketId]);
 
   const fetchTickets = async () => {
     try {
@@ -95,16 +113,22 @@ export default function SupportScreen() {
     }
   };
 
-  const fetchChatMessages = async (ticketId: number) => {
-    setIsLoadingChat(true);
+  const fetchChatMessages = async (ticketId: number, showLoading: boolean) => {
+    if (showLoading) setIsLoadingChat(true);
     try {
       const response = await axiosInstance.get("/chat", {
         params: { support_ticket_id: ticketId },
       });
-      setMessages(response.data);
+      setMessages((prev) => {
+        if (JSON.stringify(prev) === JSON.stringify(response.data)) {
+          return prev;
+        }
+        return response.data;
+      });
     } catch (e) {
+      console.error("Chat hiba:", e);
     } finally {
-      setIsLoadingChat(false);
+      if (showLoading) setIsLoadingChat(false);
     }
   };
 
@@ -122,7 +146,6 @@ export default function SupportScreen() {
         order_id: selectedOrderId,
         status: "open",
       });
-
       showAlert("Siker", "Jegye elküldve!");
       setSubject("");
       setMessage("");
@@ -137,14 +160,21 @@ export default function SupportScreen() {
 
   const handleSendMessage = async () => {
     if (!chatInput.trim() || !selectedTicketId) return;
+    if (isTicketClosed) {
+      showAlert("Hiba", "Lezárt jegyhez nem küldhető üzenet.");
+      return;
+    }
+    const currentInput = chatInput;
+    setChatInput("");
     try {
       await axiosInstance.post("/chat", {
         support_ticket_id: selectedTicketId,
-        message: chatInput,
+        message: currentInput,
       });
-      setChatInput("");
-      fetchChatMessages(selectedTicketId);
-    } catch (e) {}
+      fetchChatMessages(selectedTicketId, false);
+    } catch (e) {
+      setChatInput(currentInput);
+    }
   };
 
   const getStatusStyle = (status: string) => {
@@ -155,232 +185,268 @@ export default function SupportScreen() {
     return styles.statusPending;
   };
 
+  const currentTicket = tickets.find((t) => t.id === selectedTicketId);
+  const isTicketClosed =
+    currentTicket?.status.toLowerCase() === "closed" ||
+    currentTicket?.status.toLowerCase() === "lezárt";
+
+  const renderStatus = (status: string) => {
+    const s = status.toLowerCase();
+    return (statusMap[s] || status).toUpperCase();
+  };
+
+  const Sidebar = () => (
+    <View style={[styles.sidebar, { width: isMobile ? "100%" : 320 }]}>
+      <View style={styles.sidebarHeader}>
+        <Text style={styles.sidebarTitle}>Jegyek</Text>
+        <TouchableOpacity
+          onPress={() => setSelectedTicketId(null)}
+          style={styles.newBtn}
+        >
+          <Text style={styles.newBtnText}>+ Új jegy</Text>
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView
+        style={styles.ticketScroll}
+        showsVerticalScrollIndicator={false}
+      >
+        {tickets.length === 0 ? (
+          <Text style={styles.emptyText}>Még nincs hibajegyed.</Text>
+        ) : (
+          tickets.map((t) => (
+            <TouchableOpacity
+              key={t.id}
+              onPress={() => setSelectedTicketId(t.id)}
+              style={[
+                styles.ticketCard,
+                selectedTicketId === t.id && styles.activeTicketCard,
+              ]}
+            >
+              <View style={styles.ticketCardHeader}>
+                <Text
+                  style={[
+                    styles.ticketId,
+                    selectedTicketId === t.id && { color: "#eee" },
+                  ]}
+                >
+                  #{t.id}
+                </Text>
+                <View style={[styles.statusBadge, getStatusStyle(t.status)]}>
+                  <Text style={styles.statusText}>
+                    {renderStatus(t.status)}
+                  </Text>
+                </View>
+              </View>
+              <Text
+                style={[
+                  styles.ticketSub,
+                  selectedTicketId === t.id && { color: "#fff" },
+                ]}
+                numberOfLines={1}
+              >
+                {t.subject}
+              </Text>
+              <Text
+                style={[
+                  styles.ticketDate,
+                  selectedTicketId === t.id && { color: "#e0e0e0" },
+                ]}
+              >
+                {new Date(t.created_at).toLocaleDateString("hu-HU")}
+              </Text>
+            </TouchableOpacity>
+          ))
+        )}
+      </ScrollView>
+    </View>
+  );
+
+  const MainContent = () => (
+    <View style={styles.mainContent}>
+      {selectedTicketId ? (
+        <View style={[styles.card, { height: isMobile ? 500 : 650 }]}>
+          <View style={styles.chatHeader}>
+            <TouchableOpacity onPress={() => setSelectedTicketId(null)}>
+              <Text style={{ color: "#007aff", fontWeight: "bold" }}>
+                ← Vissza
+              </Text>
+            </TouchableOpacity>
+            <View style={{ alignItems: "flex-end" }}>
+              <Text style={styles.headerTitle}>
+                Hibajegy: #{selectedTicketId}
+              </Text>
+              {isTicketClosed && (
+                <Text
+                  style={{ fontSize: 10, color: "#dc3545", fontWeight: "bold" }}
+                >
+                  LEZÁRT
+                </Text>
+              )}
+            </View>
+          </View>
+
+          <ScrollView
+            style={styles.chatArea}
+            ref={scrollViewRef}
+            onContentSizeChange={() =>
+              scrollViewRef.current?.scrollToEnd({ animated: true })
+            }
+          >
+            {isLoadingChat && messages.length === 0 ? (
+              <ActivityIndicator color="#007aff" />
+            ) : (
+              messages.map((m) => (
+                <View
+                  key={m.id}
+                  style={[
+                    styles.bubble,
+                    m.is_admin ? styles.adminBubble : styles.userBubble,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.bubbleText,
+                      m.is_admin ? styles.adminText : styles.userText,
+                    ]}
+                  >
+                    {m.message}
+                  </Text>
+                </View>
+              ))
+            )}
+          </ScrollView>
+
+          {isTicketClosed ? (
+            <View style={styles.closedInfoBox}>
+              <Text style={styles.closedText}>
+                Ez a hibajegy lezárásra került. További üzenet nem küldhető.
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.inputRow}>
+              <TextInput
+                style={styles.chatInput}
+                placeholder="Üzenet írása..."
+                value={chatInput}
+                onChangeText={setChatInput}
+                onSubmitEditing={handleSendMessage}
+              />
+              <TouchableOpacity
+                style={styles.sendBtn}
+                onPress={handleSendMessage}
+              >
+                <Text style={styles.sendBtnText}>Küldés</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+      ) : (
+        <View style={styles.card}>
+          <Text style={styles.headerTitle}>Új csomag panasz beküldése</Text>
+          {isLoggedIn ? (
+            <View style={styles.formContent}>
+              <View style={styles.orderPicker}>
+                <Text style={styles.label}>Válassz érintett csomagot *</Text>
+                <View style={styles.pickerBox}>
+                  {isLoadingOrders ? (
+                    <ActivityIndicator style={{ padding: 20 }} />
+                  ) : orders.length === 0 ? (
+                    <Text style={styles.noOrdersText}>
+                      Nincsenek aktív rendeléseid.
+                    </Text>
+                  ) : (
+                    <View style={styles.orderListContainer}>
+                      {orders.map((o) => (
+                        <TouchableOpacity
+                          key={o.id}
+                          onPress={() => setSelectedOrderId(o.id)}
+                          style={[
+                            styles.orderItem,
+                            selectedOrderId === o.id && styles.orderItemActive,
+                          ]}
+                        >
+                          <Text
+                            style={{
+                              fontSize: 13,
+                              color: selectedOrderId === o.id ? "#fff" : "#333",
+                            }}
+                          >
+                            #{o.id} | {o.pickup_address.substring(0, 25)}...
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
+                </View>
+              </View>
+
+              <Text style={styles.label}>Tárgy</Text>
+              <TextInput
+                style={styles.input}
+                value={subject}
+                onChangeText={setSubject}
+                placeholder="Pl.: Sérült csomag..."
+              />
+
+              <Text style={styles.label}>Leírás</Text>
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                multiline
+                value={message}
+                onChangeText={setMessage}
+                placeholder="Részletek..."
+              />
+
+              <TouchableOpacity
+                style={[
+                  styles.mainSendBtn,
+                  (!selectedOrderId || !subject || !message) && {
+                    backgroundColor: "#ccc",
+                  },
+                ]}
+                onPress={handleSendTicket}
+                disabled={isSending || !selectedOrderId}
+              >
+                {isSending ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.sendBtnText}>Hibajegy beküldése</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <Text style={styles.loginWarning}>
+              Jelentkezz be a hibajegy küldéséhez.
+            </Text>
+          )}
+        </View>
+      )}
+    </View>
+  );
+
   return (
     <View style={styles.container}>
       <CustomNavbar title="Ügyfélszolgálat" />
-
       <ScrollView
         contentContainerStyle={[
           styles.mainLayout,
           { flexDirection: isMobile ? "column" : "row" },
         ]}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
       >
-        <View style={[styles.sidebar, { width: isMobile ? "100%" : 320 }]}>
-          <View style={styles.sidebarHeader}>
-            <Text style={styles.sidebarTitle}>Jegyek</Text>
-            <TouchableOpacity
-              onPress={() => setSelectedTicketId(null)}
-              style={styles.newBtn}
-            >
-              <Text style={styles.newBtnText}>+ Új jegy</Text>
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView
-            style={styles.ticketScroll}
-            showsVerticalScrollIndicator={false}
-          >
-            {tickets.length === 0 ? (
-              <Text style={styles.emptyText}>Még nincs hibajegyed.</Text>
-            ) : (
-              tickets.map((t) => (
-                <TouchableOpacity
-                  key={t.id}
-                  onPress={() => setSelectedTicketId(t.id)}
-                  style={[
-                    styles.ticketCard,
-                    selectedTicketId === t.id && styles.activeTicketCard,
-                  ]}
-                >
-                  <View style={styles.ticketCardHeader}>
-                    <Text style={styles.ticketId}>#{t.id}</Text>
-                    <View
-                      style={[styles.statusBadge, getStatusStyle(t.status)]}
-                    >
-                      <Text style={styles.statusText}>
-                        {t.status.toUpperCase()}
-                      </Text>
-                    </View>
-                  </View>
-                  <Text
-                    style={[
-                      styles.ticketSub,
-                      selectedTicketId === t.id && { color: "#fff" },
-                    ]}
-                    numberOfLines={1}
-                  >
-                    {t.subject}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.ticketDate,
-                      selectedTicketId === t.id && { color: "#e0e0e0" },
-                    ]}
-                  >
-                    {new Date(t.created_at).toLocaleDateString("hu-HU")}
-                  </Text>
-                </TouchableOpacity>
-              ))
-            )}
-          </ScrollView>
-        </View>
-
-        <View style={styles.mainContent}>
-          {selectedTicketId ? (
-            <View style={[styles.card, { maxHeight: isMobile ? 500 : 650 }]}>
-              <View style={styles.chatHeader}>
-                <TouchableOpacity onPress={() => setSelectedTicketId(null)}>
-                  <Text style={{ color: "#007aff", fontWeight: "bold" }}>
-                    ← Vissza
-                  </Text>
-                </TouchableOpacity>
-                <Text style={styles.headerTitle}>
-                  Hibajegy: #{selectedTicketId}
-                </Text>
-              </View>
-
-              <ScrollView
-                style={styles.chatArea}
-                ref={scrollViewRef}
-                onContentSizeChange={() =>
-                  scrollViewRef.current?.scrollToEnd({ animated: true })
-                }
-              >
-                {isLoadingChat ? (
-                  <ActivityIndicator color="#007aff" />
-                ) : (
-                  messages.map((m) => (
-                    <View
-                      key={m.id}
-                      style={[
-                        styles.bubble,
-                        m.is_admin ? styles.adminBubble : styles.userBubble,
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.bubbleText,
-                          m.is_admin ? styles.adminText : styles.userText,
-                        ]}
-                      >
-                        {m.message}
-                      </Text>
-                    </View>
-                  ))
-                )}
-              </ScrollView>
-
-              <View style={styles.inputRow}>
-                <TextInput
-                  style={styles.chatInput}
-                  placeholder="Üzenet írása..."
-                  value={chatInput}
-                  onChangeText={setChatInput}
-                />
-                <TouchableOpacity
-                  style={styles.sendBtn}
-                  onPress={handleSendMessage}
-                >
-                  <Text style={styles.sendBtnText}>Küldés</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          ) : (
-            <View style={styles.card}>
-              <Text style={styles.headerTitle}>Új csomag panasz beküldése</Text>
-              {isLoggedIn ? (
-                <>
-                  <View style={styles.orderPicker}>
-                    <Text style={styles.label}>
-                      Válassz érintett csomagot *
-                    </Text>
-                    <View style={styles.pickerBox}>
-                      {isLoadingOrders ? (
-                        <ActivityIndicator style={{ padding: 20 }} />
-                      ) : orders.length === 0 ? (
-                        <Text
-                          style={{
-                            padding: 15,
-                            color: "#888",
-                            fontStyle: "italic",
-                            textAlign: "center",
-                          }}
-                        >
-                          Nincsenek aktív rendeléseid.
-                        </Text>
-                      ) : (
-                        <ScrollView
-                          nestedScrollEnabled={true}
-                          style={{ flex: 1 }}
-                        >
-                          {orders.map((o) => (
-                            <TouchableOpacity
-                              key={o.id}
-                              onPress={() => setSelectedOrderId(o.id)}
-                              style={[
-                                styles.orderItem,
-                                selectedOrderId === o.id &&
-                                  styles.orderItemActive,
-                              ]}
-                            >
-                              <Text
-                                style={{
-                                  fontSize: 13,
-                                  color:
-                                    selectedOrderId === o.id ? "#fff" : "#333",
-                                }}
-                              >
-                                #{o.id} | {o.pickup_address.substring(0, 25)}...
-                              </Text>
-                            </TouchableOpacity>
-                          ))}
-                        </ScrollView>
-                      )}
-                    </View>
-                  </View>
-
-                  <Text style={styles.label}>Tárgy</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={subject}
-                    onChangeText={setSubject}
-                    placeholder="Pl.: Sérült csomag..."
-                  />
-
-                  <Text style={styles.label}>Leírás</Text>
-                  <TextInput
-                    style={[styles.input, styles.textArea]}
-                    multiline
-                    value={message}
-                    onChangeText={setMessage}
-                    placeholder="Részletek..."
-                  />
-
-                  <TouchableOpacity
-                    style={[
-                      styles.mainSendBtn,
-                      (!selectedOrderId || !subject || !message) && {
-                        backgroundColor: "#ccc",
-                      },
-                    ]}
-                    onPress={handleSendTicket}
-                    disabled={isSending || !selectedOrderId}
-                  >
-                    {isSending ? (
-                      <ActivityIndicator color="#fff" />
-                    ) : (
-                      <Text style={styles.sendBtnText}>Hibajegy beküldése</Text>
-                    )}
-                  </TouchableOpacity>
-                </>
-              ) : (
-                <Text style={{ textAlign: "center", marginTop: 20, fontSize: 20, color: "#ff5522", fontWeight: "600" }}>
-                  Jelentkezz be a hibajegy küldéséhez.
-                </Text>
-              )}
-            </View>
-          )}
-        </View>
+        {isMobile ? (
+          <>
+            <MainContent />
+            <Sidebar />
+          </>
+        ) : (
+          <>
+            <Sidebar />
+            <MainContent />
+          </>
+        )}
       </ScrollView>
       <CustomFooter />
     </View>
@@ -451,10 +517,8 @@ const styles = StyleSheet.create({
   statusOpen: { backgroundColor: "#28a745" },
   statusClosed: { backgroundColor: "#6c757d" },
   statusPending: { backgroundColor: "#ffc107" },
-  mainContent: {
-    flex: 1,
-  },
-
+  mainContent: { flex: 1 },
+  formContent: { flex: 1 },
   card: {
     backgroundColor: "#fff",
     padding: 24,
@@ -463,23 +527,15 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 10,
     elevation: 5,
-    display: "flex",
     flexDirection: "column",
     height: 600,
   },
-  chatArea: {
-    flex: 1,
-    marginBottom: 20,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: "800",
-    color: "#1a1a1a",
-    marginBottom: 20,
-  },
+  chatArea: { flex: 1, marginBottom: 20 },
+  headerTitle: { fontSize: 20, fontWeight: "800", color: "#1a1a1a" },
   chatHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
+    alignItems: "center",
     borderBottomWidth: 1,
     borderColor: "#f0f0f0",
     paddingBottom: 15,
@@ -532,8 +588,18 @@ const styles = StyleSheet.create({
     padding: 5,
     backgroundColor: "#fafafa",
   },
+  noOrdersText: {
+    padding: 15,
+    color: "#888",
+    fontStyle: "italic",
+    textAlign: "center",
+  },
   orderItem: { padding: 12, borderBottomWidth: 1, borderColor: "#f0f0f0" },
   orderItemActive: { backgroundColor: "#007aff", borderRadius: 8 },
+  orderListContainer: {
+    maxHeight: 180,
+    overflow: "hidden",
+  },
   input: {
     backgroundColor: "#f9f9fb",
     borderWidth: 1,
@@ -549,8 +615,26 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     marginTop: 25,
     alignItems: "center",
-    shadowColor: "#007aff",
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
+  },
+  loginWarning: {
+    textAlign: "center",
+    marginTop: 20,
+    fontSize: 20,
+    color: "#ff5522",
+    fontWeight: "600",
+  },
+  closedInfoBox: {
+    backgroundColor: "#fff3f3",
+    padding: 15,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#ffcccc",
+    alignItems: "center",
+  },
+  closedText: {
+    color: "#d32f2f",
+    fontSize: 13,
+    fontWeight: "600",
+    textAlign: "center",
   },
 });
