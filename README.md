@@ -6,7 +6,7 @@
 ![Status](https://img.shields.io/badge/Status-Active-green)
 ![License](https://img.shields.io/badge/License-MIT-blue)
 
-**Gyors és megbízható logisztikai megoldás – egy iskolai projektből, amely végül túlnőtt önmagán.**
+**Gyors és megbízható logisztikai megoldás – egy iskolai vizsgaremek.**
 
 </div>
 
