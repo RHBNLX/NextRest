@@ -6,7 +6,7 @@
 ![Status](https://img.shields.io/badge/Status-Active-green)
 ![License](https://img.shields.io/badge/License-MIT-blue)
 
-**Gyors és megbízható logisztikai megoldás – egy iskolai projektből, amely végül túlnőtt önmagán.**
+**Gyors és megbízható logisztikai megoldás – egy iskolai vizsgaremek.**
 
 </div>
 
@@ -102,4 +102,3 @@ A rendszer fejlesztése során kiemelt figyelmet fordítottunk a biztonságra:
 
 **Utolsó frissítés:** 2026. 04. 27.  
 **Verzió:** 1.0.0  
-**Licensz:** MIT
