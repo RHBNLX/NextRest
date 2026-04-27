@@ -5,16 +5,11 @@ import { Alert } from 'react-native';
 
 type UserRole = 'admin' | 'courier' | 'customer' | null;
 
-/**
- * Hook to protect routes based on user role
- * Usage: useProtectedRoute('admin') - only allows admin users
- */
 export function useProtectedRoute(allowedRoles: UserRole[]) {
   const router = useRouter();
   const { user, isLoggedIn } = useAuth();
 
   useEffect(() => {
-    // If no one is logged in
     if (!isLoggedIn || !user) {
       Alert.alert(
         'Hozzáférés megtagadva',
@@ -24,8 +19,6 @@ export function useProtectedRoute(allowedRoles: UserRole[]) {
       router.replace('/auth/login');
       return;
     }
-
-    // Check if user role is allowed
     if (!allowedRoles.includes(user.role as UserRole)) {
       Alert.alert(
         'Hozzáférés megtagadva',
