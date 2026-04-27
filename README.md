@@ -8,26 +8,7 @@
 
 **A gyors, megbízható csomagszállítási platform - egy iskolai projektből amit majdnem elvetettünk**
 
-[Jellemzők](#jellemzők) • [Telepítés](#telepítés) • [Felhasználás](#felhasználás) • [API Dokumentáció](#api-dokumentáció)
-
 </div>
-
----
-
-## 📋 Tartalomjegyzék
-
-- [Áttekintés](#áttekintés)
-- [Jellemzők](#jellemzők)
-- [Rendszer Követelmények](#rendszer-követelmények)
-- [Felhasználási Útmutató](#felhasználási-útmutató)
-- [Admin Panel Útmutató](#admin-panel-útmutató)
-- [Futár Útmutató](#futár-útmutató)
-- [Felhasználó Útmutató](#felhasználó-útmutató)
-- [API Dokumentáció](#api-dokumentáció)
-- [Biztonsági Információk](#biztonsági-információk)
-- [Fejlesztőknek](#fejlesztőknek)
-
----
 
 ## 🎯 Áttekintés
 
