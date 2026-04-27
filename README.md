@@ -102,4 +102,3 @@ A rendszer fejlesztése során kiemelt figyelmet fordítottunk a biztonságra:
 
 **Utolsó frissítés:** 2026. 04. 27.  
 **Verzió:** 1.0.0  
-**Licensz:** MIT
