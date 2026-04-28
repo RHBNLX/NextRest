@@ -4,7 +4,6 @@
 
 ![NextRest](https://img.shields.io/badge/NextRest-v1.0.0-blue)
 ![Status](https://img.shields.io/badge/Status-Active-green)
-![License](https://img.shields.io/badge/License-MIT-blue)
 
 **Gyors és megbízható logisztikai megoldás – egy iskolai vizsgaremek.**
 
